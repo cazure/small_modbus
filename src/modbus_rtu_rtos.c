@@ -13,9 +13,7 @@ int rtos_open(modbus_t *ctx)
 
     modbus_rtu_config_t *ctx_rtu = ctx->backend_data;
 
-    ctx->backend->debug(0,"open %s at %d bauds (%c, %d, %d)\n",
-               ctx_rtu->device, ctx_rtu->baud, ctx_rtu->parity,
-               ctx_rtu->data_bit, ctx_rtu->stop_bit);
+    ctx->backend->debug(0,"\n\r open %s  %d\n\r",ctx_rtu->device, ctx_rtu->baud);
 
     /* The O_NOCTTY flag tells UNIX that this program doesn't want
        to be the "controlling terminal" for that port. If you
@@ -291,12 +289,11 @@ int rtos_read(modbus_t *ctx,uint8_t *data, uint16_t length)
 }
 int rtos_write(modbus_t *ctx,uint8_t *data, uint16_t length)
 {
-    int rc;
     modbus_rtu_config_t *ctx_rtu = ctx->backend_data;
     if(ctx_rtu->rts_set)
         ctx_rtu->rts_set(ctx,1);
 
-    rc = write(ctx->fd, data, length);
+    write(ctx->fd, data, length);
 
 //    int i;
 //    rt_kprintf("write %d :",length);
@@ -350,7 +347,7 @@ int rtos_select(modbus_t *ctx,int timeout_ms)
     return rc;
 }
 
-static uint8_t now_level = 6;
+static uint8_t now_level = 0;
 
 void rtos_debug(int level,const char *fmt, ...)
 {
@@ -369,10 +366,10 @@ int debug_modbus(int argc, char**argv)
 {
     if(argc<2)
     {
-        rt_kprintf("debug_modbus [0-5]");
+        rt_kprintf("debug_modbus [0-2]");
     }else
     {
-        now_level  = atoi(argv[1])%6;
+        now_level  = atoi(argv[1])%3;
     }
     return RT_EOK;
 }
@@ -394,7 +391,7 @@ modbus_backend_t modbus_rtu_rtos_backend =
 
 int modbus_rtu_init(modbus_t *ctx,modbus_backend_t *backend,void *config)
 {
-    ctx->core = &modbus_rtu_core;
+    ctx->core = (modbus_core_t*)&modbus_rtu_core;
     ctx->backend_data = config;
     if(backend == NULL)
     {

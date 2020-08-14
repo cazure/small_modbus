@@ -77,7 +77,7 @@ int modbus_flush(modbus_t *ctx)
         return -1;
     }
     rc = ctx->backend->flush(ctx);
-    ctx->backend->debug(0,"Bytes flushed (%d)\n", rc);
+    ctx->backend->debug(1,"Bytes flushed (%d)\n", rc);
     return rc;
 }
 
@@ -276,13 +276,13 @@ int _modbus_receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
         rc = ctx->backend->select(ctx,wait_time);
         if(rc < 0)
         {
-            ctx->backend->debug(0,"[%d]select(%d) \n",rc,wait_time);
+            ctx->backend->debug(1,"[%d]select(%d) \n",rc,wait_time);
             return rc;
         }
         rc = ctx->backend->read(ctx,msg + msg_length, length_to_read);
         if(rc <= 0)
         {
-            ctx->backend->debug(0,"[%d]read(%d) \n",rc,length_to_read);
+            ctx->backend->debug(1,"[%d]read(%d) \n",rc,length_to_read);
             return MODBUS_FAIL;
         }
         if(rc!=length_to_read)
@@ -479,18 +479,8 @@ static int response_exception(modbus_t *ctx, sft_t *sft,
                               unsigned int to_flush)
 {
     int rsp_length;
-//	uint8_t buff[128];
-//    /* Print debug message */
-//    va_list ap;
-//
-//    va_start(ap, template);
-//    //vfdebug(0,stderr, template, ap);
-//    rt_vsnprintf(buff, sizeof(buff) - 1, template, ap);
-//    rt_kprintf(template);
-//    va_end(ap);
     /* Flush if required */
     if (to_flush) {
-        //_sleep_response_timeout(ctx);
         modbus_flush(ctx);
     }
     /* Build exception response */
