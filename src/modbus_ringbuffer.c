@@ -29,7 +29,7 @@ enum modbus_ringbuffer_state modbus_ringbuffer_status(struct modbus_ringbuffer *
 void modbus_ringbuffer_init(struct modbus_ringbuffer *rb,uint8_t *pool,int16_t size)
 {
     MODBUS_ASSERT(rb != RT_NULL);
-    RT_ASSERT(size > 0);
+    MODBUS_ASSERT(size > 0);
 
     /* initialize read and write index */
     rb->read_mirror = rb->read_index = 0;
@@ -302,4 +302,9 @@ void modbus_ringbuffer_reset(struct modbus_ringbuffer *rb)
     rb->read_index = 0;
     rb->write_mirror = 0;
     rb->write_index = 0;
+}
+
+uint16_t modbus_ringbuffer_get_size(struct modbus_ringbuffer *rb)
+{
+    return rb->buffer_size;
 }

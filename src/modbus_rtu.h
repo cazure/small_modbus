@@ -73,6 +73,12 @@ typedef struct _modbus_rtu_config {
 int modbus_rtu_config(modbus_t *ctx,char *device,int baud,uint8_t data_bit, uint8_t stop_bit,char parity);
 int modbus_rtu_set_rts_ops(modbus_t *ctx,int (*rts_set)(modbus_t *ctx, int on));
 
+#else
+
+typedef struct _modbus_rtu_config {
+    int (*rts_set)(modbus_t *ctx, int on);
+} modbus_rtu_config_t;
+
 #endif
 
 extern const modbus_core_t modbus_rtu_core;

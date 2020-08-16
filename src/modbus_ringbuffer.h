@@ -9,10 +9,6 @@
 #ifndef MODBUS_RINGBUFFER_H__
 #define MODBUS_RINGBUFFER_H__
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <string.h>
 #include <stdint.h>
 
@@ -69,20 +65,15 @@ int modbus_ringbuffer_get(struct modbus_ringbuffer *rb, uint8_t *ptr, uint16_t l
 int modbus_ringbuffer_getchar(struct modbus_ringbuffer *rb, uint8_t *ch);
 int modbus_ringbuffer_data_len(struct modbus_ringbuffer *rb);
 
-uint16_t modbus_ringbuffer_get_size(struct modbus_ringbuffer *rb)
-{
-    return rb->buffer_size;
-}
+uint16_t modbus_ringbuffer_get_size(struct modbus_ringbuffer *rb);
 
 /** return the size of empty space in rb */
 #define modbus_ringbuffer_space_len(rb) ((rb)->buffer_size - modbus_ringbuffer_data_len(rb))
 
+#ifndef MODBUS_ASSERT
 #define MODBUS_ASSERT(EX)
+#endif
 
 #define MODBUS_ALIGN_DOWN(size, align)      ((size) & ~((align) - 1))
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

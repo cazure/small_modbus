@@ -33,6 +33,11 @@
 #endif
 
 
+#ifndef MODBUS_ASSERT
+#define MODBUS_ASSERT(n)
+#endif
+
+
 /* Modbus function codes */
 #define MODBUS_FC_READ_COILS                0x01
 #define MODBUS_FC_READ_DISCRETE_INPUTS      0x02

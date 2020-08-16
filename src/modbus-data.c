@@ -10,7 +10,6 @@
 
 #include "modbus.h"
 
-
 static inline uint16_t bswap_16(uint16_t x)
 {
     return (x >> 8) | (x << 8);
