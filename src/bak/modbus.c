@@ -77,7 +77,7 @@ int modbus_flush(modbus_t *ctx)
         return -1;
     }
     rc = ctx->backend->flush(ctx);
-    ctx->backend->debug(1,"Bytes flushed (%d)\n", rc);
+    ctx->backend->debug(0,"Bytes flushed (%d)\n", rc);
     return rc;
 }
 
@@ -270,25 +270,26 @@ int _modbus_receive_msg(modbus_t *ctx, uint8_t *msg, msg_type_t msg_type)
 
     step = _STEP_FUNCTION;
     length_to_read = ctx->core->header_length + 1;
-		
+
     while (length_to_read != 0) 
 	{
         rc = ctx->backend->select(ctx,wait_time);
-        if(rc < 0)
+        if(rc != MODBUS_OK)
         {
-            ctx->backend->debug(1,"[%d]select(%d) \n",rc,wait_time);
+            ctx->backend->debug(0,"[%d]select(%d) \n",rc,wait_time);
             return rc;
         }
         rc = ctx->backend->read(ctx,msg + msg_length, length_to_read);
         if(rc <= 0)
         {
-            ctx->backend->debug(1,"[%d]read(%d) \n",rc,length_to_read);
+            ctx->backend->debug(0,"[%d]read(%d) \n",rc,length_to_read);
             return MODBUS_FAIL;
         }
         if(rc!=length_to_read)
         {
-            //当想读取和实际读取数据长度不同，buff没数据
-//            rc = -1;
+           //当想读取和实际读取数据长度不同，buff没数据
+           //rc = -1;
+//            ctx->backend->debug(0,"[%d]read(%d) \n",rc,length_to_read);
 //            return MODBUS_FAIL;
         }
         /* Sums bytes received */

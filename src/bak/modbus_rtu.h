@@ -53,24 +53,17 @@ int modbus_rtu_set_write_timeout(modbus_t *ctx,int timeout_ms);
 #include <dfs_posix.h>
 #include <termios.h>
 
-typedef struct _modbus_rtu_config {
-    char *device;
-    /* Bauds: 9600, 19200, 57600, 115200, etc */
-    int baud;
-    /* Data bit */
-    uint8_t data_bit;
-    /* Stop bit */
-    uint8_t stop_bit;
-    /* Parity: 'N', 'O', 'E' */
-    char parity;
-
-    /* Save old termios settings */
-    struct termios old_tios;
-
+typedef struct _modbus_rtu_config
+{
+    struct rt_device *serial;
+    struct serial_configure serial_config;
+    struct rt_semaphore rx_sem;
+    struct rt_ringbuffer rx_ring;
+    char device_name[6];
     int (*rts_set)(modbus_t *ctx, int on);
 } modbus_rtu_config_t;
 
-int modbus_rtu_config(modbus_t *ctx,char *device,int baud,uint8_t data_bit, uint8_t stop_bit,char parity);
+int modbus_rtu_config(modbus_t *ctx,char *device_name,int baud,uint8_t data_bit, uint8_t stop_bit,uint8_t parity);
 int modbus_rtu_set_rts_ops(modbus_t *ctx,int (*rts_set)(modbus_t *ctx, int on));
 
 #else
