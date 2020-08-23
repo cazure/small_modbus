@@ -7,7 +7,6 @@
  * Date           Author       Notes
  * 2020-08-21     Administrator       the first version
  */
-#include "small_modbus.h"
 #include "small_modbus_rtu.h"
 
 /* Table of CRC values for high-order byte */
@@ -116,9 +115,9 @@ int _rtu_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 int _rtu_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 {
     int addr = buff[0];
-    if (addr != smb->slave && addr != MODBUS_BROADCAST_ADDRESS)
+    if (addr != smb->addr && addr != MODBUS_BROADCAST_ADDRESS)
     {
-        ctx->backend->debug(0,"slave adrr: %d is err\n", addr);
+        smb->port->debug(smb,0,"slave adrr: %d is err\n",addr);
         return MODBUS_FAIL;
     }
 
@@ -128,16 +127,16 @@ int _rtu_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
     {
        return length;
     }
-    ctx->backend->debug(0,"crc  0x%0X != 0x%0X\n",crc_cal, crc_recv);
+    smb->port->debug(smb,0,"crc  0x%0X != 0x%0X\n",crc_cal, crc_recv);
     return MODBUS_FAIL;
 }
 
 int _rtu_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
 {
     int addr = buff[0];
-    if (addr != smb->slave && addr != MODBUS_BROADCAST_ADDRESS)
+    if (addr != smb->addr && addr != MODBUS_BROADCAST_ADDRESS)
     {
-        ctx->backend->debug(0,"slave adrr: %d is err\n", addr);
+        smb->port->debug(smb,0,"slave adrr: %d is err\n", addr);
         return MODBUS_FAIL;
     }
     return MODBUS_OK;
@@ -148,7 +147,7 @@ const small_modbus_core_t modbus_rtu_core =
     .type           = 0,
     .len_header     = _MODBUS_RTU_HEADER_LENGTH,
     .len_checksum   = _MODBUS_RTU_CHECKSUM_LENGTH,
-    .len_max        =  MODBUS_RTU_MAX_ADU_LENGTH,
+    .len_max        = _MODBUS_RTU_MAX_ADU_LENGTH,
     .build_req_header   = _rtu_build_req_header,
     .build_res_header   = _rtu_build_res_header,
     .check_send_pre     = _rtu_check_send_pre,

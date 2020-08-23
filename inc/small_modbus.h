@@ -10,6 +10,11 @@
 #ifndef _SMALL_MODBUS_H_
 #define _SMALL_MODBUS_H_
 
+#include "stdint.h"
+#include "stdio.h"
+
+#define MODBUS_BROADCAST_ADDRESS 0xFF
+
 typedef struct _small_modbus        small_modbus_t;
 typedef struct _small_modbus_core   small_modbus_core_t;
 typedef struct _small_modbus_port   small_modbus_port_t;
@@ -21,8 +26,8 @@ struct _small_modbus_core{
     uint8_t len_header;
     uint8_t len_checksum;
     uint8_t len_max;
-    int (*build_req_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num);    //请求头
-    int (*build_res_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun);    //回应头
+    int (*build_req_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num);
+    int (*build_res_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun);
     int (*check_send_pre)(small_modbus_t *smb,uint8_t *buff,int length);
     int (*check_wait_poll)(small_modbus_t *smb,uint8_t *buff,int length);
     int (*check_wait_confirm)(small_modbus_t *smb,uint8_t *buff,int length);
@@ -43,18 +48,18 @@ struct _small_modbus_port {
     int  write_timeout;
     int (*open) (small_modbus_t *smb);
     int (*close)(small_modbus_t *smb);
-    int (*read) (small_modbus_t *smb,uint8_t *data,uint16_t length);  //读函数
-    int (*write)(small_modbus_t *smb,uint8_t *data,uint16_t length);  //写函数
-    int (*flush)(small_modbus_t *smb);  //清空fifo
-    int (*select)(small_modbus_t *smb,int timeout);  //堵塞等待
-    void (*debug)(small_modbus_t *smb,int level,const char *fmt, ...); //调试
+    int (*read) (small_modbus_t *smb,uint8_t *data,uint16_t length);
+    int (*write)(small_modbus_t *smb,uint8_t *data,uint16_t length);
+    int (*flush)(small_modbus_t *smb);
+    int (*select)(small_modbus_t *smb,int timeout);
+    void (*debug)(small_modbus_t *smb,int level,const char *fmt, ...);
 };
 
 struct _small_modbus_mapping {
-    struct bit{int start;int num;uint8_t *array;};
-    struct input_bit{int start;int num;uint8_t *array;};
-    struct registers{int start;int num;uint16_t *array;};
-    struct input_registers{int start;int num;uint16_t *array;};
+    struct bit{int start;int num;uint8_t *array;}bit;
+    struct input_bit{int start;int num;uint8_t *array;}input_bit;
+    struct registers{int start;int num;uint16_t *array;}registers;
+    struct input_registers{int start;int num;uint16_t *array;}input_registers;
 };
 
 struct _small_modbus{
@@ -82,7 +87,7 @@ int modbus_open(small_modbus_t *smb);
 int modbus_close(small_modbus_t *smb);
 int modbus_flush(small_modbus_t *smb);
 int modbus_select(small_modbus_t *smb,int timeout);
-#define modbus_debug(smb,level,...) if(smb->port->debug)smb->port->debug(smb,level,__VA_ARGS__)
+#define modbus_debug(smb,level,...)     if(smb->port->debug)smb->port->debug(smb,level,__VA_ARGS__)
 
 
 /* Waiting for reply confirmation message */

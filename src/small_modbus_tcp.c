@@ -7,7 +7,6 @@
  * Date           Author       Notes
  * 2020-08-21     Administrator       the first version
  */
-#include "small_modbus.h"
 #include "small_modbus_tcp.h"
 
 /* Builds a TCP request header */
@@ -62,8 +61,8 @@ int _tcp_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
     /* Substract the header length to the message length */
     int rc = length - 6;
 
-    req[4] = rc >> 8;
-    req[5] = rc & 0x00FF;
+    buff[4] = rc >> 8;
+    buff[5] = rc & 0x00FF;
 
     return length;
 }
@@ -84,7 +83,7 @@ const small_modbus_core_t modbus_tcp_core =
     .type           = 1,
     .len_header     = _MODBUS_TCP_HEADER_LENGTH,
     .len_checksum   = _MODBUS_TCP_CHECKSUM_LENGTH,
-    .len_max        =  MODBUS_TCP_MAX_ADU_LENGTH,
+    .len_max        = _MODBUS_TCP_MAX_ADU_LENGTH,
     .build_req_header   = _tcp_build_req_header,
     .build_res_header   = _tcp_build_res_header,
     .check_send_pre     = _tcp_check_send_pre,
