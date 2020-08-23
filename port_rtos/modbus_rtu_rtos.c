@@ -223,3 +223,7 @@ int modbus_rtu_set_write_timeout(small_modbus_t *smb,int timeout_ms)
     return timeout_ms;
 }
 
+
+
+
+

@@ -102,6 +102,25 @@ int modbus_read_input_registers(small_modbus_t *smb, int addr, int nb, uint16_t 
     return MODBUS_FAIL;
 }
 
+int modbus_write_bit(small_modbus_t *smb, int addr, int status)
+{
+    return MODBUS_FAIL;
+}
+
+int modbus_write_register(small_modbus_t *smb, int addr, int value)
+{
+    return MODBUS_FAIL;
+}
+
+int modbus_write_bits(small_modbus_t *smb, int addr, int nb, const uint8_t *data)
+{
+    return MODBUS_FAIL;
+}
+
+int modbus_write_registers(small_modbus_t *smb, int addr, int nb, const uint16_t *data)
+{
+    return MODBUS_FAIL;
+}
 
 
 int modbus_mask_write_register(small_modbus_t *smb, int addr, uint16_t and_mask, uint16_t or_mask)
