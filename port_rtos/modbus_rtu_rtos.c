@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: LGPL-2.1+
  */
 #include "modbus_rtu_rtos.h"
+#include "string.h"
 
 static rt_err_t uart_rx_ind(rt_device_t dev, rt_size_t size)
 {
@@ -138,7 +139,7 @@ static uint8_t now_level = 0;
 
 void rtos_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 {
-    modbus_rtu_config_t *config = smb->port_data;
+    //modbus_rtu_config_t *config = smb->port_data;
     static char log_buf[32];
     if(level <= now_level)
     {
@@ -165,8 +166,6 @@ MSH_CMD_EXPORT(debug_modbus,debug_modbus [0-5])
 
 small_modbus_port_t modbus_rtu_rtos_port =
 {
-    .read_timeout = 300,
-    .write_timeout = 300,
     .open =  rtos_open,
     .close = rtos_close,
     .read =  rtos_read,
@@ -211,18 +210,6 @@ int modbus_rtu_set_rts_ops(small_modbus_t *smb,int (*rts_set)(small_modbus_t *sm
     config->rts_set = rts_set;
     return 0;
 }
-int modbus_rtu_set_read_timeout(small_modbus_t *smb,int timeout_ms)
-{
-    smb->port->read_timeout = timeout_ms;
-    return timeout_ms;
-}
-
-int modbus_rtu_set_write_timeout(small_modbus_t *smb,int timeout_ms)
-{
-    smb->port->write_timeout = timeout_ms;
-    return timeout_ms;
-}
-
 
 
 

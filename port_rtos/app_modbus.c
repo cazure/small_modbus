@@ -59,7 +59,7 @@ void modbus_slave_thread(void *param)
     modbus_rtu_set_rts_ops(&modbus_slave_ctx,_modbus_slave_rts_set);
 
     modbus_set_slave(&modbus_slave_ctx,6);
-    modbus_open(&modbus_slave_ctx);
+    modbus_connect(&modbus_slave_ctx);
     while (1)
     {
         rc = modbus_wait_poll(&modbus_slave_ctx, receive_buf);
@@ -74,10 +74,10 @@ void modbus_slave_thread(void *param)
 			{
 			    MODBUS_PRINTF("\n[1]------ receive failed ---------\n");
 				delay_ms(10);
-				modbus_flush(&modbus_slave_ctx);
+				modbus_error_recovery(&modbus_slave_ctx);
 			}
     }
-    modbus_close(&modbus_slave_ctx);
+    modbus_disconnect(&modbus_slave_ctx);
 }
 
 
@@ -99,7 +99,7 @@ void modbus_master_thread(void *param)
     modbus_rtu_set_rts_ops(&modbus_master_ctx,_modbus_master_rts_set);
 
     modbus_set_slave(&modbus_master_ctx,6);
-    modbus_open(&modbus_master_ctx);
+    modbus_connect(&modbus_master_ctx);
     int regs =0 ,num = 0;
     while (1)
     {
@@ -127,11 +127,11 @@ void modbus_master_thread(void *param)
         {
             MODBUS_PRINTF("\n[2]------ receive failed -------\n");
             delay_ms(10);
-            modbus_flush(&modbus_master_ctx);
+            modbus_error_recovery(&modbus_master_ctx);
         }
         delay_ms(6000);
     }
-    modbus_close(&modbus_master_ctx);
+    modbus_disconnect(&modbus_master_ctx);
 }
 
 

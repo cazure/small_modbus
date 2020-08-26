@@ -85,7 +85,7 @@ static uint16_t crc16(uint8_t *buffer, uint16_t buffer_length)
 }
 
 /* Builds a RTU request header */
-int _rtu_build_req_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
+int _rtu_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
 {
     buff[0] = slave;
     buff[1] = fun;
@@ -97,7 +97,7 @@ int _rtu_build_req_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,in
 }
 
 /* Builds a RTU response header */
-int _rtu_build_res_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun)
+int _rtu_build_response_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun)
 {
     buff[0] = slave;
     buff[1] = fun;
@@ -115,7 +115,7 @@ int _rtu_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 int _rtu_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 {
     int addr = buff[0];
-    if (addr != smb->addr && addr != MODBUS_BROADCAST_ADDRESS)
+    if (addr != smb->slave_addr && addr != MODBUS_BROADCAST_ADDRESS)
     {
         smb->port->debug(smb,0,"slave adrr: %d is err\n",addr);
         return MODBUS_FAIL;
@@ -134,7 +134,7 @@ int _rtu_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 int _rtu_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
 {
     int addr = buff[0];
-    if (addr != smb->addr && addr != MODBUS_BROADCAST_ADDRESS)
+    if (addr != smb->slave_addr && addr != MODBUS_BROADCAST_ADDRESS)
     {
         smb->port->debug(smb,0,"slave adrr: %d is err\n", addr);
         return MODBUS_FAIL;
@@ -148,8 +148,8 @@ const small_modbus_core_t modbus_rtu_core =
     .len_header     = _MODBUS_RTU_HEADER_LENGTH,
     .len_checksum   = _MODBUS_RTU_CHECKSUM_LENGTH,
     .len_max        = _MODBUS_RTU_MAX_ADU_LENGTH,
-    .build_req_header   = _rtu_build_req_header,
-    .build_res_header   = _rtu_build_res_header,
+    .build_request_header   = _rtu_build_request_header,
+    .build_response_header  = _rtu_build_response_header,
     .check_send_pre     = _rtu_check_send_pre,
     .check_wait_poll    = _rtu_check_wait_poll,
     .check_wait_confirm   = _rtu_check_wait_confirm

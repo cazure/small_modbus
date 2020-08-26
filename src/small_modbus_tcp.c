@@ -10,7 +10,7 @@
 #include "small_modbus_tcp.h"
 
 /* Builds a TCP request header */
-int _tcp_build_req_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
+int _tcp_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
 {
     smb->tid++;
     buff[0] = smb->tid >> 8;
@@ -34,7 +34,7 @@ int _tcp_build_req_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,in
 }
 
 /* Builds a TCP response header */
-int _tcp_build_res_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun)
+int _tcp_build_response_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun)
 {
     /* Extract from MODBUS Messaging on TCP/IP Implementation
        Guide V1.0b (page 23/46):
@@ -84,8 +84,8 @@ const small_modbus_core_t modbus_tcp_core =
     .len_header     = _MODBUS_TCP_HEADER_LENGTH,
     .len_checksum   = _MODBUS_TCP_CHECKSUM_LENGTH,
     .len_max        = _MODBUS_TCP_MAX_ADU_LENGTH,
-    .build_req_header   = _tcp_build_req_header,
-    .build_res_header   = _tcp_build_res_header,
+    .build_request_header   = _tcp_build_request_header,
+    .build_response_header  = _tcp_build_response_header,
     .check_send_pre     = _tcp_check_send_pre,
     .check_wait_poll    = _tcp_check_wait_poll,
     .check_wait_confirm   = _tcp_check_wait_confirm
