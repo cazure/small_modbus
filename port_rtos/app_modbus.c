@@ -62,14 +62,14 @@ void modbus_slave_thread(void *param)
     modbus_connect(&modbus_slave_ctx);
     while (1)
     {
-        rc = modbus_wait_poll(&modbus_slave_ctx, receive_buf);
+            rc = modbus_wait_poll(&modbus_slave_ctx, receive_buf);
 			//rc = modbus_receive(&modbus_slave_ctx, receive_buf);
 			//rc = modbus_read(query_buf,64);
 			if (rc > 0)
 			{
 			    MODBUS_PRINTF("\n[1]------ receive %d --------\n",rc);
 				//rc = modbus_reply(&modbus_slave_ctx, receive_buf, rc, modbus_mapping);
-				rc = modbus_handle_poll(&modbus_slave_ctx, modbus_mapping, receive_buf, rc);
+				rc = modbus_handle_poll(&modbus_slave_ctx,receive_buf, rc,modbus_mapping);
 			}else
 			{
 			    MODBUS_PRINTF("\n[1]------ receive failed ---------\n");

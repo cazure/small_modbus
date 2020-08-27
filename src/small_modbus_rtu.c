@@ -139,7 +139,15 @@ int _rtu_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
         smb->port->debug(smb,0,"slave adrr: %d is err\n", addr);
         return MODBUS_FAIL;
     }
-    return MODBUS_OK;
+
+    uint16_t crc_cal = crc16(buff, length - 2);
+    uint16_t crc_recv = (buff[length - 2] << 8) | buff[length - 1];
+    if (crc_cal == crc_recv)
+    {
+       return length;
+    }
+    smb->port->debug(smb,0,"crc  0x%0X != 0x%0X\n",crc_cal, crc_recv);
+    return MODBUS_FAIL;
 }
 
 const small_modbus_core_t modbus_rtu_core =

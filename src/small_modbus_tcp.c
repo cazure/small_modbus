@@ -74,7 +74,7 @@ int _tcp_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 
 int _tcp_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
 {
-    uint16_t tt_id = buff[0] + buff[1]*256;
+    uint16_t tt_id = (uint16_t)buff[0] + (uint16_t)buff[1]*256;
     return MODBUS_OK;
 }
 

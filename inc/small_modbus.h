@@ -15,8 +15,8 @@
 
 /* function codes */
 enum functionCode {
-    MODBUS_FC_READ_COILS                =0x01,
-    MODBUS_FC_READ_DISCRETE_INPUTS      =0x02,
+    MODBUS_FC_READ_HOLDING_COILS        =0x01,
+    MODBUS_FC_READ_INPUTS_COILS         =0x02,
     MODBUS_FC_READ_HOLDING_REGISTERS    =0x03,
     MODBUS_FC_READ_INPUT_REGISTERS      =0x04,
     MODBUS_FC_WRITE_SINGLE_COIL         =0x05,
@@ -160,19 +160,19 @@ int modbus_set_write_timeout(small_modbus_t *smb,int timeout_ms);
 int modbus_set_slave(small_modbus_t *smb, int slave);
 int modbus_set_debug(small_modbus_t *smb, int level);
 
-/* start requset */
-int modbus_start_requset(small_modbus_t *smb,uint8_t *request,int slave_addr,int function,int addr,int num,void *write_data);
+/* start request */
+int modbus_start_request(small_modbus_t *smb,uint8_t *request,int function,int addr,int num,void *write_data);
 /* wait for confirmation message */
 int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response);
 /* handle confirmation message */
-int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint8_t *response,void *read_data);
-
+int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_len,uint8_t *response,uint16_t response_len,void *read_data);
 
 /* wait for host to query data */
-int modbus_wait_poll(small_modbus_t *smb,uint8_t *request);
+int modbus_wait_poll(small_modbus_t *smb,uint8_t *response);
 /* handle query data */
-int modbus_handle_poll(small_modbus_t *smb,uint8_t *request,int length,small_modbus_mapping_t * mapping_tab);
+int modbus_handle_poll(small_modbus_t *smb,uint8_t *response,uint16_t response_len,small_modbus_mapping_t * mapping_tab);
 
+int modbus_wait(small_modbus_t *smb,small_modbus_mapping_t * mapping_tab);
 
 /* read */
 int modbus_read_bits(small_modbus_t *smb, int addr, int num, uint8_t *read_data);
