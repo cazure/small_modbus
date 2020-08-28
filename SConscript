@@ -9,7 +9,7 @@ src = Glob('src/*.c')
 src += Glob('port_rtos/*.c')
 
 if GetDepend(['PKG_USING_SMALL_MODBUS_TEST']):
-    src += Glob('samples/*.c')
+    src += Glob('test/*.c')
 
 path = [cwd + '/inc']
 path += [cwd + '/port_rtos']

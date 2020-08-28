@@ -75,7 +75,7 @@ int _tcp_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 int _tcp_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
 {
     uint16_t tt_id = (uint16_t)buff[0] + (uint16_t)buff[1]*256;
-    return MODBUS_OK;
+    return tt_id;
 }
 
 const small_modbus_core_t modbus_tcp_core =
@@ -83,7 +83,7 @@ const small_modbus_core_t modbus_tcp_core =
     .type           = 1,
     .len_header     = _MODBUS_TCP_HEADER_LENGTH,
     .len_checksum   = _MODBUS_TCP_CHECKSUM_LENGTH,
-    .len_max        = _MODBUS_TCP_MAX_ADU_LENGTH,
+    .len_adu_max    = _MODBUS_TCP_MAX_ADU_LENGTH,
     .build_request_header   = _tcp_build_request_header,
     .build_response_header  = _tcp_build_response_header,
     .check_send_pre     = _tcp_check_send_pre,

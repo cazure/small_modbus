@@ -77,10 +77,10 @@ typedef struct _small_modbus_mapping   small_modbus_mapping_t;
 
 
 struct _small_modbus_core{
-    uint8_t type;
-    uint8_t len_header;
-    uint8_t len_checksum;
-    uint8_t len_max;
+    uint16_t type;
+    uint16_t len_header;
+    uint16_t len_checksum;
+    uint16_t len_adu_max;
     int (*build_request_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num);
     int (*build_response_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun);
     int (*check_send_pre)(small_modbus_t *smb,uint8_t *buff,int length);
@@ -120,10 +120,8 @@ struct _small_modbus{
     int         status;
     int         read_timeout;
     int         write_timeout;
-    uint8_t     read_buff_szie;
-    uint8_t     write_buff_szie;
-    uint8_t     *read_buff;
-    uint8_t     *write_buff;
+    uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];
+    uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];
     uint8_t     slave_addr;
     uint8_t     debug_level;
     uint16_t    tid;
@@ -148,13 +146,14 @@ int _modbus_open(small_modbus_t *smb);
 int _modbus_close(small_modbus_t *smb);
 int _modbus_flush(small_modbus_t *smb);
 int _modbus_select(small_modbus_t *smb,int timeout);
+int _modbus_init(small_modbus_t *smb);
 
 int modbus_connect(small_modbus_t *smb);
 int modbus_disconnect(small_modbus_t *smb);
 int modbus_error_recovery(small_modbus_t *smb);
 
-int modbus_set_read_buff(small_modbus_t *smb,int byte,uint8_t *buff);
-int modbus_set_write_buff(small_modbus_t *smb,int byte,uint8_t *buff);
+//int modbus_set_read_buff(small_modbus_t *smb,int byte,uint8_t *buff);
+//int modbus_set_write_buff(small_modbus_t *smb,int byte,uint8_t *buff);
 int modbus_set_read_timeout(small_modbus_t *smb,int timeout_ms);
 int modbus_set_write_timeout(small_modbus_t *smb,int timeout_ms);
 int modbus_set_slave(small_modbus_t *smb, int slave);
