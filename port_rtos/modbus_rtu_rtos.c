@@ -6,8 +6,6 @@
 #include "modbus_rtu_rtos.h"
 #include "string.h"
 
-#include "modbus_rtu_rtos.h"
-
 
 int _modbus1_rts(small_modbus_t *ctx, int on)
 {

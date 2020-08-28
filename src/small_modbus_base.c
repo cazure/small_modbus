@@ -65,7 +65,7 @@ int _modbus_init(small_modbus_t *smb)
         }
         if(smb->debug_level==0)
         {
-            smb->debug_level = 0;
+            smb->debug_level = 3;
         }
     }
     return MODBUS_FAIL;

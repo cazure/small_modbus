@@ -7,7 +7,7 @@
  * Date           Author       Notes
  * 2020-08-28     Administrator       the first version
  */
-
+#include "modbus_tcp_rtos.h"
 
 small_modbus_port_t modbus_tcp_rtos_port = {0};
 //{

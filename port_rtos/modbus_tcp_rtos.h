@@ -10,6 +10,9 @@
 #ifndef _PORT_RTOS_MODBUS_TCP_RTOS_H_
 #define _PORT_RTOS_MODBUS_TCP_RTOS_H_
 
+#include "small_modbus_tcp.h"
+#include <rtthread.h>
+#include <rtdevice.h>
 
 
 #endif /* _PORT_RTOS_MODBUS_TCP_RTOS_H_ */
