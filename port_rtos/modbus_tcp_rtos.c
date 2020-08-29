@@ -8,6 +8,7 @@
  * 2020-08-28     Administrator       the first version
  */
 #include "modbus_tcp_rtos.h"
+modbus_tcp_config_t tcp_config = {0};
 
 small_modbus_port_t modbus_tcp_rtos_port = {0};
 //{
@@ -32,5 +33,17 @@ int modbus_tcp_init(small_modbus_t *smb,small_modbus_port_t *port,void *config)
     }else {
         smb->port = port;
     }
+    return 0;
+}
+int modbus_tcp_listen(small_modbus_t *smb,int port)
+{
+    return 0;
+}
+int modbus_tcp_accept(small_modbus_t *smb,int port)
+{
+    return 0;
+}
+int modbus_tcp_set_socket(small_modbus_t *smb,int fd)
+{
     return 0;
 }

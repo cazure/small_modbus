@@ -109,14 +109,36 @@ struct _small_modbus_port {
 };
 
 struct _small_modbus_mapping {
+    int (*status_callback) (small_modbus_mapping_t *mapping,int read_write,int data_type,int start,int num);
     struct bit{int start;int num;uint8_t *array;}bit;
     struct input_bit{int start;int num;uint8_t *array;}input_bit;
     struct registers{int start;int num;uint16_t *array;}registers;
     struct input_registers{int start;int num;uint16_t *array;}input_registers;
 };
 
+#define modbus_mapping_init(map,callback,bit_start,bit_num,input_bit_start,input_bit_num,reg_start,reg_num,input_reg_start,input_reg_num) \
+{\
+    static uint8_t _##map##_bit_array[bit_num];\
+    static uint8_t _##map##_input_bit_array[input_bit_num];\
+    static uint16_t _##map##_reg_array[reg_num];\
+    static uint16_t _##map##_input_reg_array[input_reg_num];\
+    map.status_callback = callback;\
+    map.bit.start = bit_start;\
+    map.bit.num = bit_num;\
+    map.bit.array = _##map##_bit_array;\
+    map.input_bit.start = input_bit_start;\
+    map.input_bit.num   = input_bit_num;\
+    map.input_bit.array = _##map##_input_bit_array;\
+    map.registers.start = reg_start;\
+    map.registers.num   = reg_num;\
+    map.registers.array = _##map##_reg_array;\
+    map.input_registers.start = input_reg_start;\
+    map.input_registers.num   = input_reg_num;\
+    map.input_registers.array = _##map##_input_reg_array;\
+}
+
+
 struct _small_modbus{
-    int         fd;
     int         status;
     int         read_timeout;
     int         write_timeout;
@@ -167,9 +189,9 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response);
 int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_len,uint8_t *response,uint16_t response_len,void *read_data);
 
 /* wait for host to query data */
-int modbus_wait_poll(small_modbus_t *smb,uint8_t *response);
+int modbus_wait_poll(small_modbus_t *smb,uint8_t *request);
 /* handle query data */
-int modbus_handle_poll(small_modbus_t *smb,uint8_t *response,uint16_t response_len,small_modbus_mapping_t * mapping_tab);
+int modbus_handle_poll(small_modbus_t *smb,uint8_t *request,uint16_t request_len,small_modbus_mapping_t * mapping_tab);
 
 int modbus_wait(small_modbus_t *smb,small_modbus_mapping_t * mapping_tab);
 
@@ -187,5 +209,9 @@ int modbus_write_registers(small_modbus_t *smb, int addr, int num, const uint16_
 
 int modbus_mask_write_register(small_modbus_t *smb, int addr, uint16_t and_mask, uint16_t or_mask);
 int modbus_write_and_read_registers(small_modbus_t *smb, int write_addr, int write_nb,const uint16_t *src, int read_addr, int read_nb,uint16_t *dest);
+
+
+
+
 
 #endif /* _SMALL_MODBUS_H_ */

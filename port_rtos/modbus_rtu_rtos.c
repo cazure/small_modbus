@@ -164,7 +164,7 @@ int rtos_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
     rc = rt_ringbuffer_get(&(config->rx_ring), data, length);
     //rc = rt_device_read(ctx_config->serial,0,data,length);
 
-    if(smb->debug_level == 0)
+    //if(smb->debug_level == 0)
     {
         int i;
         rt_kprintf("read %d,%d :",rc,length);
@@ -189,7 +189,7 @@ int rtos_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
     if(config->rts_set)
         config->rts_set(smb,0);
 
-    if(smb->debug_level == 0)
+   // if(smb->debug_level == 0)
     {
         int i;
         rt_kprintf("write %d :",length);
