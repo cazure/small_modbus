@@ -69,13 +69,22 @@ int _tcp_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 
 int _tcp_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 {
-    return length;
+    int check_len = (buff[4]<<8)|(buff[5]);
+    if( (check_len+6) == length)
+    {
+        return length;
+    }
+    return 0;
 }
 
 int _tcp_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
 {
-    uint16_t tt_id = (uint16_t)buff[0] + (uint16_t)buff[1]*256;
-    return tt_id;
+    int check_len = (buff[4]<<8)|(buff[5]);
+    if( (check_len+6) == length)
+    {
+        return length;
+    }
+    return 0;
 }
 
 const small_modbus_core_t modbus_tcp_core =

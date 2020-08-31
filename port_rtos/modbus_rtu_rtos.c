@@ -6,6 +6,7 @@
 #include "modbus_rtu_rtos.h"
 #include "string.h"
 
+#include "controller.h"
 
 int _modbus1_rts(small_modbus_t *ctx, int on)
 {
@@ -20,7 +21,6 @@ int _modbus2_rts(small_modbus_t *ctx, int on)
     hw_rs485_set(2,on);
     return 0;
 }
-
 
 modbus_rtu_config_t uart3_config =
 {
@@ -96,7 +96,9 @@ int hw_uart_init(void)
         rt_device_control(uart3_config.dev, RT_DEVICE_CTRL_CONFIG, &(uart3_config.config));
 
         /* 以中断接收及轮询发送模式打开串口设备 */
-        rt_device_open(uart3_config.dev, RT_DEVICE_FLAG_RDWR|RT_DEVICE_FLAG_DMA_RX);
+        //rt_device_open(uart3_config.dev, RT_DEVICE_FLAG_RDWR|RT_DEVICE_FLAG_DMA_RX);
+        rt_device_open(uart3_config.dev, RT_DEVICE_FLAG_DMA_RX);
+
         /* 设置接收回调函数 */
         rt_device_set_rx_indicate(uart3_config.dev, uart3_indicate);
     }
@@ -116,13 +118,13 @@ int hw_uart_init(void)
         rt_device_control(uart6_config.dev, RT_DEVICE_CTRL_CONFIG, &(uart6_config.config));
 
         /* 以中断接收及轮询发送模式打开串口设备 */
-        rt_device_open(uart6_config.dev, RT_DEVICE_FLAG_RDWR|RT_DEVICE_FLAG_DMA_RX);
+        //rt_device_open(uart6_config.dev, RT_DEVICE_FLAG_RDWR|RT_DEVICE_FLAG_DMA_RX);
+        rt_device_open(uart6_config.dev, RT_DEVICE_FLAG_DMA_RX);
         /* 设置接收回调函数 */
         rt_device_set_rx_indicate(uart6_config.dev, uart6_indicate);
     }
     return 0;
 }
-
 
 //static rt_err_t uart_rx_ind(rt_device_t dev, rt_size_t size)
 //{
@@ -140,8 +142,7 @@ int hw_uart_init(void)
 //    return RT_EOK;
 //}
 
-
-int rtos_open(small_modbus_t *smb)
+static int rtu_open(small_modbus_t *smb)
 {
     modbus_rtu_config_t *config = smb->port_data;
     smb->port->debug(smb,0,"open:%s baud:%d \n",config->name,config->config.baud_rate);
@@ -149,14 +150,16 @@ int rtos_open(small_modbus_t *smb)
     return 0;
 }
 
-int rtos_close(small_modbus_t *smb)
+static int rtu_close(small_modbus_t *smb)
 {
     modbus_rtu_config_t *config = smb->port_data;
     smb->port->debug(smb,0,"close:%s\n",config->name);
+    if(config->rts_set)
+        config->rts_set(smb,0);
     return 0;
 }
 
-int rtos_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
+static int rtu_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
 {
     int rc = 0;
     modbus_rtu_config_t *config = smb->port_data;
@@ -176,7 +179,7 @@ int rtos_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
     }
     return rc;
 }
-int rtos_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
+static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 {
     modbus_rtu_config_t *config = smb->port_data;
     if(config->rts_set)
@@ -189,7 +192,8 @@ int rtos_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
     if(config->rts_set)
         config->rts_set(smb,0);
 
-   // if(smb->debug_level == 0)
+    rt_thread_mdelay(smb->write_timeout);
+    //if(smb->debug_level == 0)
     {
         int i;
         rt_kprintf("write %d :",length);
@@ -202,15 +206,21 @@ int rtos_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 
     return length;
 }
-int rtos_flush(small_modbus_t *smb)
+static int rtu_flush(small_modbus_t *smb)
 {
     modbus_rtu_config_t *config = smb->port_data;
+
+    rt_thread_mdelay(smb->write_timeout);
+    rt_thread_mdelay(smb->write_timeout);
+    rt_thread_mdelay(smb->write_timeout);
+
     int rc = rt_ringbuffer_data_len(&(config->rx_ring));
     rt_ringbuffer_reset(&(config->rx_ring));
+    rt_sem_control(&(config->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
+    rt_kprintf("flush: %d\n",rc);
     return rc;
 }
-
-int rtos_select(small_modbus_t *smb,int timeout_ms)
+static int rtu_select(small_modbus_t *smb,int timeout_ms)
 {
     modbus_rtu_config_t *config = smb->port_data;
 
@@ -218,8 +228,10 @@ int rtos_select(small_modbus_t *smb,int timeout_ms)
     if(rc>0)
     {
         return MODBUS_OK;
+    }else
+    {
+        rt_sem_control(&(config->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
     }
-    rt_sem_control(&(config->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
     if(rt_sem_take(&(config->rx_sem), timeout_ms) == RT_EOK)
     {
         return MODBUS_OK;
@@ -228,8 +240,7 @@ int rtos_select(small_modbus_t *smb,int timeout_ms)
         return MODBUS_TIMEOUT;
     }
 }
-
-void rtos_debug(small_modbus_t *smb,int level,const char *fmt, ...)
+static int rtu_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 {
     //modbus_rtu_config_t *config = smb->port_data;
     static char log_buf[32];
@@ -243,20 +254,16 @@ void rtos_debug(small_modbus_t *smb,int level,const char *fmt, ...)
     }
 }
 
-
-
 small_modbus_port_t modbus_rtu_rtos_port =
 {
-    .open =  rtos_open,
-    .close = rtos_close,
-    .read =  rtos_read,
-    .write = rtos_write,
-    .flush = rtos_flush,
-    .select = rtos_select,
-    .debug =  rtos_debug
+    .open =  rtu_open,
+    .close = rtu_close,
+    .read =  rtu_read,
+    .write = rtu_write,
+    .flush =  rtu_flush,
+    .select = rtu_select,
+    .debug =  rtu_debug
 };
-
-
 int modbus_rtu_init(small_modbus_t *smb,small_modbus_port_t *port,void *config)
 {
     _modbus_init(smb);

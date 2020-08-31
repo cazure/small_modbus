@@ -57,11 +57,11 @@ int _modbus_init(small_modbus_t *smb)
     {
         if(smb->read_timeout==0)
         {
-            smb->read_timeout = 300;
+            smb->read_timeout = 100;
         }
         if(smb->write_timeout==0)
         {
-            smb->write_timeout = 300;
+            smb->write_timeout = 10;
         }
         if(smb->debug_level==0)
         {
@@ -71,6 +71,79 @@ int _modbus_init(small_modbus_t *smb)
     return MODBUS_FAIL;
 }
 
+int _modbus_array2bit(uint8_t *dest_modbus_bit,void *source,uint16_t bit_num)
+{
+    uint8_t *source_array = source;
+    uint16_t index = 0;
+    uint16_t byte_num =  (bit_num / 8) + ((bit_num % 8) ? 1 : 0);
+    uint16_t byte_index = 0;
+    uint8_t  offset,temp;
+
+    for(index=0; index < bit_num; index++)
+    {
+        byte_index = (index / 8);
+        offset = (index % 8);
+        temp = (0x01 << offset)&0xff;
+        if(source_array[index])
+        {
+            dest_modbus_bit[byte_index] |= temp;
+        }else
+        {
+            dest_modbus_bit[byte_index] &= ~temp;
+        }
+    }
+    return byte_num;
+}
+
+int _modbus_bit2array(void *dest,uint8_t *modbus_bit_array,uint16_t bit_num)
+{
+    uint8_t *dest_byte = dest;
+    uint16_t index = 0;
+    uint16_t bit_index = 0;
+    uint16_t byte_num =  bit_num;
+    uint8_t  offset,temp;
+
+    for(index=0; index < bit_num; index++)
+    {
+        bit_index = (index / 8);
+        offset = (index % 8);
+        temp = (0x01 << offset)&0xff;
+        if(modbus_bit_array[bit_index] & temp)
+        {
+            dest_byte[index] = 1;
+        }else
+        {
+            dest_byte[index] = 0;
+        }
+    }
+    return byte_num;
+}
+
+int _modbus_array2reg(uint8_t *dest_reg,void *source_array,uint16_t reg_num)
+{
+    uint16_t *source = source_array;  //u16
+    uint16_t index = 0;
+    uint16_t byte_num =  reg_num*2;
+
+    for(index=0; index < reg_num; index++)
+    {
+        dest_reg[(index*2)] = (source[index] >> 8);
+        dest_reg[(index*2)+1] = (source[index] & 0x00FF);
+    }
+    return byte_num;
+}
+
+int _modbus_reg2array(void *dest_array,uint8_t *source_reg,uint16_t reg_num)
+{
+    uint16_t *dest = dest_array;  //u16
+    uint16_t index = 0;
+
+    for(index=0; index < reg_num; index++)
+    {
+        dest[index] = (source_reg[index*2]<<8)|(source_reg[index*2+1]);
+    }
+    return reg_num;
+}
 
 /*
  * *
@@ -157,12 +230,9 @@ int modbus_start_request(small_modbus_t *smb,uint8_t *request,int function,int a
 {
     int len = 0;
     int slave_addr = smb->slave_addr;
-    uint8_t *u8p = write_data;
-    uint16_t *u16p = write_data;
     uint16_t temp = 0;
     uint16_t data_num = 0;
-    uint16_t data_cnt = 0;
-    uint8_t byte_num = 0,n = 0,m = 0,b = 0;
+    uint16_t data_len = 0;
 
     len = smb->core->build_request_header(smb,request,slave_addr,function,addr,num);
 
@@ -170,49 +240,22 @@ int modbus_start_request(small_modbus_t *smb,uint8_t *request,int function,int a
     {
         case MODBUS_FC_WRITE_SINGLE_COIL:
         case MODBUS_FC_WRITE_SINGLE_REGISTER:
-            temp = *u16p;
+        {
+            temp = *((uint16_t *)write_data);
             request[len-2] = temp>>8;
             request[len-1] = temp & 0x00ff;
-            break;
+        }break;
         case MODBUS_FC_WRITE_MULTIPLE_COILS:
         {
-            data_cnt = 0;
-            data_num = num;
-            byte_num = (data_num / 8) + ((data_num % 8) ? 1 : 0);
-            request[len]= byte_num;
-            len++;
-            for (n=0;n<byte_num;n++)
-            {
-                request[len] = 0;
-                for(m=0x01;(m&0xFF);(m<<=1))
-                {
-                    if(data_cnt < data_num)
-                    {
-                        if (u8p[data_cnt++])
-                        {
-                            request[len] |= m;
-                        }
-                        else
-                        {
-                            request[len] &=~ m;
-                        }
-                    }
-                }
-                len++;
-            }
+            data_len = _modbus_array2bit(&request[len+1], write_data, num);
+            request[len++] = data_len;
+            len += data_len;
         }break;
         case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
         {
-            data_cnt = 0;
-            data_num = num;
-            byte_num = data_num * 2;
-            request[len]= byte_num;
-            len++;
-            for (data_cnt = 0; data_cnt < data_num; data_cnt++)
-            {
-                request[len++] = u16p[data_cnt] >> 8;
-                request[len++] = u16p[data_cnt] & 0x00FF;
-            }
+            data_len = _modbus_array2reg(&request[len+1], write_data, num);
+            request[len++] = data_len;
+            len += data_len;
         }break;
     }
     len = smb->core->check_send_pre(smb,request,len);
@@ -370,26 +413,15 @@ int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_
             case MODBUS_FC_READ_HOLDING_COILS:
             case MODBUS_FC_READ_INPUTS_COILS:
                 {
-                    data_cnt = 0;
                     // 计算读取线圈数量
-                    data_num = (request[smb->core->len_header+3]<<8)|(request[smb->core->len_header+4]);  //data length
+                    data_num = (request[smb->core->len_header+3]<<8)|(request[smb->core->len_header+4]);
                     // 计算字节数
-                    temp = (2 + (data_num / 8) + ((data_num % 8) ? 1 : 0)); //计算
-                    // 计算节数
+                    temp = (2 + (data_num / 8) + ((data_num % 8) ? 1 : 0));
+                    // 计算实际字节数
                     byte_num = (response[smb->core->len_header+1]);
                     if((uint8_t)temp == byte_num)
                     {
-                        for(n=0;n<byte_num;n++)
-                        {
-                            b = response[smb->core->len_header+1+n];
-                            for(m=0x01;(m&0xff);(m<<=1))
-                            {
-                                if(data_cnt < data_num)
-                                {
-                                    u8p[data_cnt++] = (b & m)?1:0;
-                                }
-                            }
-                        }
+                        _modbus_bit2array(read_data,&(response[smb->core->len_header+2]),data_num);
                         return MODBUS_OK;
                     }
                 }
@@ -405,11 +437,7 @@ int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_
                     byte_num = (response[smb->core->len_header+1]);
                     if((uint8_t)temp == byte_num)
                     {
-                        for(data_cnt=0;data_cnt<data_num;data_cnt++)
-                        {
-                            u16p[data_cnt] = (response[smb->core->len_header+2+(data_cnt*2)]<<8)|
-                                    (response[smb->core->len_header+3+(data_cnt*2)]);
-                        }
+                        _modbus_reg2array(read_data, &(response[smb->core->len_header+2]), data_num);
                         return MODBUS_OK;
                     }
                 }
@@ -445,9 +473,6 @@ int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_
     }
     return MODBUS_FAIL;
 }
-
-
-
 
 /* wait for master to query data */
 int modbus_wait_poll(small_modbus_t *smb,uint8_t *request)
@@ -549,53 +574,96 @@ int modbus_handle_poll(small_modbus_t *smb,uint8_t *request,uint16_t request_len
     uint16_t *map_16bit;
 
     /* Data are flushed on illegal number of values errors. */
-    switch (query_function) {
-    case MODBUS_FC_READ_HOLDING_COILS:
-    case MODBUS_FC_READ_INPUTS_COILS: {
-        if(query_function == MODBUS_FC_READ_HOLDING_COILS)
+    switch (query_function)
+    {
+        case MODBUS_FC_READ_HOLDING_COILS:
+        case MODBUS_FC_READ_INPUTS_COILS:
         {
-            map_address = mapping_tab->bit.start;
-            map_num = mapping_tab->bit.num;
-            map_8bit = mapping_tab->bit.array;
-        }else
-        {
-            map_address = mapping_tab->input_bit.start;
-            map_num = mapping_tab->input_bit.num;
-            map_8bit = mapping_tab->input_bit.array;
-        }
-        query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];
-
-        if(map_address <= query_address)//起始地址
-        {
-            int diff = query_address - map_address;
-            if((map_num-diff) >= query_num)//结束地址
+            if(query_function == MODBUS_FC_READ_HOLDING_COILS)
             {
-                smb->core->build_request_header(smb,response,query_slave,query_function,query_address,query_num);
-
-//                rsp_length = ctx->core->build_response_basis(&sft, rsp);
-//                rsp[rsp_length++] = (nb / 8) + ((nb % 8) ? 1 : 0);
-//                rsp_length = response_io_status(tab_bits, mapping_address, nb,rsp, rsp_length);
+                map_address = mapping_tab->bit.start;
+                map_num = mapping_tab->bit.num;
+                map_8bit = mapping_tab->bit.array;
+            }else
+            {
+                map_address = mapping_tab->input_bit.start;
+                map_num = mapping_tab->input_bit.num;
+                map_8bit = mapping_tab->input_bit.array;
             }
+            query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];
 
-        }
+            if((map_address <= query_address) && (query_address <= (map_address + map_num)) ) //起始地址
+            {
+                int diff = query_address - map_address;
+                if((0  < query_num )&&( query_num <= (map_num-diff)))//查询数量
+                {
+                    smb->core->build_request_header(smb,response,query_slave,query_function,query_address,query_num);
+
+    //                rsp_length = ctx->core->build_response_basis(&sft, rsp);
+    //                rsp[rsp_length++] = (nb / 8) + ((nb % 8) ? 1 : 0);
+    //                rsp_length = response_io_status(tab_bits, mapping_address, nb,rsp, rsp_length);
+                }
+
+            }
+        }break;
+        case MODBUS_FC_READ_HOLDING_REGISTERS:
+        case MODBUS_FC_READ_INPUT_REGISTERS:
+        {
+            if(query_function == MODBUS_FC_READ_HOLDING_REGISTERS)
+            {
+                map_address = mapping_tab->registers.start;
+                map_num = mapping_tab->registers.num;
+                map_16bit = mapping_tab->registers.array;
+            }else
+            {
+                map_address = mapping_tab->input_registers.start;
+                map_num = mapping_tab->input_registers.num;
+                map_16bit = mapping_tab->input_registers.array;
+            }
+            query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];
+
+            if((map_address <= query_address) && (query_address <= (map_address + map_num)) ) //起始地址
+            {
+                int diff = query_address - map_address;
+                if((0  < query_num )&&( query_num <= (map_num-diff)))//查询数量
+                {
+                    smb->core->build_request_header(smb,response,query_slave,query_function,query_address,query_num);
+
+    //                rsp_length = ctx->core->build_response_basis(&sft, rsp);
+    //                rsp[rsp_length++] = (nb / 8) + ((nb % 8) ? 1 : 0);
+    //                rsp_length = response_io_status(tab_bits, mapping_address, nb,rsp, rsp_length);
+                }
+
+            }
+//            unsigned int is_input = (function == MODBUS_FC_READ_INPUT_REGISTERS);
+//            int start_registers = is_input ? mb_mapping->start_input_registers : mb_mapping->start_registers;
+//            int nb_registers = is_input ? mb_mapping->nb_input_registers : mb_mapping->nb_registers;
+//            uint16_t *tab_registers = is_input ? mb_mapping->tab_input_registers : mb_mapping->tab_registers;
+//            const char * const name = is_input ? "read_input_registers" : "read_registers";
+//            int nb = (req[offset + 3] << 8) + req[offset + 4];
+//            /* The mapping can be shifted to reduce memory consumption and it
+//               doesn't always start at address zero. */
+//            int mapping_address = address - start_registers;
+//
+//            if (nb < 1 || MODBUS_MAX_READ_REGISTERS < nb) {
+//                ctx->backend->debug(0,"Illegal nb of values %d in %s (max %d)\n",nb, name, MODBUS_MAX_READ_REGISTERS);
+//                rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, TRUE);
+//            } else if (mapping_address < 0 || (mapping_address + nb) > nb_registers) {
+//                ctx->backend->debug(0,"Illegal data address 0x%0X in %s\n",mapping_address < 0 ? address : address + nb, name);
+//                rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, FALSE);
+//            } else {
+//                int i;
+//                rsp_length = ctx->core->build_response_basis(&sft, rsp);
+//                rsp[rsp_length++] = nb << 1;
+//                for (i = mapping_address; i < mapping_address + nb; i++)
+//                {
+//                    rsp[rsp_length++] = tab_registers[i] >> 8;
+//                    rsp[rsp_length++] = tab_registers[i] & 0xFF;
+//                }
+//            }
+        }break;
 
 
-//        if((query_num < 1) || (MODBUS_MAX_READ_BITS < query_num))
-//        {
-//            smb->port->debug(smb,0,"Illegal nb of values %d in %s (max %d)\n",nb, name, MODBUS_MAX_READ_BITS);
-//            //rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, TRUE);
-//        }else if(mapping_address < 0 || (mapping_address + nb) > nb_bits)
-//        {
-//            smb->port->debug(smb,0,"Illegal data address 0x%0X in %s\n",mapping_address < 0 ? address : address + nb, name);
-//            //rsp_length = response_exception(ctx, &sft,MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, FALSE);
-//        }else
-//        {
-//            rsp_length = ctx->core->build_response_basis(&sft, rsp);
-//            rsp[rsp_length++] = (nb / 8) + ((nb % 8) ? 1 : 0);
-//            rsp_length = response_io_status(tab_bits, mapping_address, nb,rsp, rsp_length);
-//        }
-    }
-//        break;
 //    case MODBUS_FC_READ_HOLDING_REGISTERS:
 //    case MODBUS_FC_READ_INPUT_REGISTERS: {
 //        unsigned int is_input = (function == MODBUS_FC_READ_INPUT_REGISTERS);
