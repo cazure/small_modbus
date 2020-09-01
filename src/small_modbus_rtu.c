@@ -117,7 +117,7 @@ int _rtu_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
     int addr = buff[0];
     if (addr != smb->slave_addr && addr != MODBUS_BROADCAST_ADDRESS)
     {
-        smb->port->debug(smb,0,"slave adrr: %d is err\n",addr);
+        smb->port->debug(smb,0,"slave adrr: 0x%0X != 0x%0X\n", addr,smb->slave_addr);
         return MODBUS_FAIL;
     }
 
@@ -136,7 +136,7 @@ int _rtu_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
     int addr = buff[0];
     if (addr != smb->slave_addr && addr != MODBUS_BROADCAST_ADDRESS)
     {
-        smb->port->debug(smb,0,"slave adrr: %d is err\n", addr);
+        smb->port->debug(smb,0,"slave adrr: 0x%0X != 0x%0X\n", addr,smb->slave_addr);
         return MODBUS_FAIL;
     }
 
@@ -150,7 +150,7 @@ int _rtu_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
     return MODBUS_FAIL;
 }
 
-const small_modbus_core_t modbus_rtu_core =
+const small_modbus_core_t _modbus_rtu_core =
 {
     .type           = 0,
     .len_header     = _MODBUS_RTU_HEADER_LENGTH,

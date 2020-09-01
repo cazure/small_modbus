@@ -11,7 +11,7 @@
 #define _SMALL_MODBUS_TCP_H_
 
 #include "small_modbus.h"
-extern const small_modbus_core_t modbus_tcp_core;
+extern const small_modbus_core_t _modbus_tcp_core;
 
 #define _MODBUS_TCP_HEADER_LENGTH      7
 #define _MODBUS_TCP_PRESET_REQ_LENGTH 12

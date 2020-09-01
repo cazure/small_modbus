@@ -11,7 +11,7 @@
 #define _SMALL_MODBUS_RTU_H_
 
 #include "small_modbus.h"
-extern const small_modbus_core_t modbus_rtu_core;
+extern const small_modbus_core_t _modbus_rtu_core;
 
 #define _MODBUS_RTU_HEADER_LENGTH      1
 #define _MODBUS_RTU_PRESET_REQ_LENGTH  6

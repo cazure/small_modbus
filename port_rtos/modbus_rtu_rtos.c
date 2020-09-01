@@ -211,13 +211,14 @@ static int rtu_flush(small_modbus_t *smb)
     modbus_rtu_config_t *config = smb->port_data;
 
     rt_thread_mdelay(smb->write_timeout);
-    rt_thread_mdelay(smb->write_timeout);
-    rt_thread_mdelay(smb->write_timeout);
 
     int rc = rt_ringbuffer_data_len(&(config->rx_ring));
     rt_ringbuffer_reset(&(config->rx_ring));
     rt_sem_control(&(config->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
-    rt_kprintf("flush: %d\n",rc);
+    if(rc)
+    {
+        rt_kprintf("flush: %d\n",rc);
+    }
     return rc;
 }
 static int rtu_select(small_modbus_t *smb,int timeout_ms)
@@ -252,9 +253,10 @@ static int rtu_debug(small_modbus_t *smb,int level,const char *fmt, ...)
         va_end(args);
         rt_kprintf(log_buf);
     }
+    return 0;
 }
 
-small_modbus_port_t modbus_rtu_rtos_port =
+small_modbus_port_t _modbus_rtu_rtos_port =
 {
     .open =  rtu_open,
     .close = rtu_close,
@@ -267,11 +269,11 @@ small_modbus_port_t modbus_rtu_rtos_port =
 int modbus_rtu_init(small_modbus_t *smb,small_modbus_port_t *port,void *config)
 {
     _modbus_init(smb);
-    smb->core = (small_modbus_core_t*)&modbus_rtu_core;
+    smb->core = (small_modbus_core_t*)&_modbus_rtu_core;
     smb->port_data = config;
     if(port ==NULL)
     {
-        smb->port = &modbus_rtu_rtos_port;
+        smb->port = &_modbus_rtu_rtos_port;
     }else {
         smb->port = port;
     }

@@ -87,7 +87,7 @@ int _tcp_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
     return 0;
 }
 
-const small_modbus_core_t modbus_tcp_core =
+const small_modbus_core_t _modbus_tcp_core =
 {
     .type           = 1,
     .len_header     = _MODBUS_TCP_HEADER_LENGTH,

@@ -29,6 +29,22 @@ enum functionCode {
     MODBUS_FC_WRITE_AND_READ_REGISTERS  =0x17,
 };
 
+/* Protocol exceptions */
+enum {
+    MODBUS_EXCEPTION_ILLEGAL_FUNCTION = 0x01,
+    MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS,
+    MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE,
+    MODBUS_EXCEPTION_SLAVE_OR_SERVER_FAILURE,
+    MODBUS_EXCEPTION_ACKNOWLEDGE,
+    MODBUS_EXCEPTION_SLAVE_OR_SERVER_BUSY,
+    MODBUS_EXCEPTION_NEGATIVE_ACKNOWLEDGE,
+    MODBUS_EXCEPTION_MEMORY_PARITY,
+    MODBUS_EXCEPTION_NOT_DEFINED,
+    MODBUS_EXCEPTION_GATEWAY_PATH,
+    MODBUS_EXCEPTION_GATEWAY_TARGET,
+    MODBUS_EXCEPTION_MAX
+};
+
 #define MODBUS_BROADCAST_ADDRESS    0
 
 /* Modbus_Application_Protocol_V1_1b.pdf (chapter 6 section 1 page 12)
@@ -105,7 +121,7 @@ struct _small_modbus_port {
     int (*write)(small_modbus_t *smb,uint8_t *data,uint16_t length);
     int (*flush)(small_modbus_t *smb);
     int (*select)(small_modbus_t *smb,int timeout);
-    void (*debug)(small_modbus_t *smb,int level,const char *fmt, ...);
+    int (*debug)(small_modbus_t *smb,int level,const char *fmt, ...);
 };
 
 struct _small_modbus_mapping {
@@ -116,27 +132,40 @@ struct _small_modbus_mapping {
     struct input_registers{int start;int num;uint16_t *array;}input_registers;
 };
 
-#define modbus_mapping_init(map,callback,bit_start,bit_num,input_bit_start,input_bit_num,reg_start,reg_num,input_reg_start,input_reg_num) \
+#define modbus_mapping_init(map,callback,\
+bit_start,bit_num,bit_array,    input_bit_start,input_bit_num,input_bit_array,\
+reg_start,reg_num,reg_array,    input_reg_start,input_reg_num,input_reg_array)\
+{\
+    map.status_callback = callback;\
+    map.bit.start = bit_start;\
+    map.bit.num = bit_num;\
+    map.bit.array = bit_array;\
+    map.input_bit.start = input_bit_start;\
+    map.input_bit.num   = input_bit_num;\
+    map.input_bit.array = input_bit_array;\
+    map.registers.start = reg_start;\
+    map.registers.num   = reg_num;\
+    map.registers.array = reg_array;\
+    map.input_registers.start = input_reg_start;\
+    map.input_registers.num   = input_reg_num;\
+    map.input_registers.array = input_reg_array;\
+}
+
+#define modbus_mapping_new(map,callback,\
+bit_start,bit_num,input_bit_start,input_bit_num,\
+reg_start,reg_num,input_reg_start,input_reg_num) \
 {\
     static uint8_t _##map##_bit_array[bit_num];\
     static uint8_t _##map##_input_bit_array[input_bit_num];\
     static uint16_t _##map##_reg_array[reg_num];\
     static uint16_t _##map##_input_reg_array[input_reg_num];\
-    map.status_callback = callback;\
-    map.bit.start = bit_start;\
-    map.bit.num = bit_num;\
-    map.bit.array = _##map##_bit_array;\
-    map.input_bit.start = input_bit_start;\
-    map.input_bit.num   = input_bit_num;\
-    map.input_bit.array = _##map##_input_bit_array;\
-    map.registers.start = reg_start;\
-    map.registers.num   = reg_num;\
-    map.registers.array = _##map##_reg_array;\
-    map.input_registers.start = input_reg_start;\
-    map.input_registers.num   = input_reg_num;\
-    map.input_registers.array = _##map##_input_reg_array;\
+    modbus_mapping_init(map,callback,\
+        bit_start,          bit_num,            _##map##_bit_array,\
+        input_bit_start,    input_bit_num,      _##map##_input_bit_array,\
+        reg_start,          reg_num,            _##map##_reg_array,\
+        input_reg_start,    input_reg_num,      _##map##_input_reg_array\
+    );\
 }
-
 
 struct _small_modbus{
     int         status;
@@ -204,14 +233,11 @@ int modbus_read_input_registers(small_modbus_t *smb, int addr, int num, uint16_t
 /* write */
 int modbus_write_bit(small_modbus_t *smb, int addr, int write_status);
 int modbus_write_register(small_modbus_t *smb, int addr, int write_value);
-int modbus_write_bits(small_modbus_t *smb, int addr, int num, const uint8_t *write_data);
-int modbus_write_registers(small_modbus_t *smb, int addr, int num, const uint16_t *write_data);
+int modbus_write_bits(small_modbus_t *smb, int addr, int num,uint8_t *write_data);
+int modbus_write_registers(small_modbus_t *smb, int addr, int num,uint16_t *write_data);
 
 int modbus_mask_write_register(small_modbus_t *smb, int addr, uint16_t and_mask, uint16_t or_mask);
-int modbus_write_and_read_registers(small_modbus_t *smb, int write_addr, int write_nb,const uint16_t *src, int read_addr, int read_nb,uint16_t *dest);
-
-
-
+int modbus_write_and_read_registers(small_modbus_t *smb, int write_addr, int write_nb,uint16_t *src, int read_addr, int read_nb,uint16_t *dest);
 
 
 #endif /* _SMALL_MODBUS_H_ */

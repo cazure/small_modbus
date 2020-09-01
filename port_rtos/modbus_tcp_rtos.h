@@ -16,6 +16,8 @@
 
 typedef struct _modbus_tcp_config
 {
+    int      server_socket;
+    uint16_t server_port;
 
     int         fd;
     uint16_t    tid;
@@ -31,9 +33,9 @@ typedef struct _modbus_tcp_config
 
 
 int modbus_tcp_init(small_modbus_t *smb,small_modbus_port_t *port,void *config);
-int modbus_tcp_listen(small_modbus_t *smb,int port);
-int modbus_tcp_accept(small_modbus_t *smb,int port);
-int modbus_tcp_set_socket(small_modbus_t *smb,int fd);
+int modbus_tcp_listen(small_modbus_t *smb,uint16_t port);
+int modbus_tcp_accept(small_modbus_t *smb,int socket_fd);
+int modbus_tcp_set_socket(small_modbus_t *smb,int socket_fd);
 
 
 

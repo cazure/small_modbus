@@ -109,9 +109,10 @@ static int tcp_debug(small_modbus_t *smb,int level,const char *fmt, ...)
         va_end(args);
         rt_kprintf(log_buf);
     }
+    return 0;
 }
 
-small_modbus_port_t modbus_tcp_rtos_port =
+small_modbus_port_t _modbus_tcp_rtos_port =
 {
     .open =  tcp_open,
     .close = tcp_close,
@@ -125,25 +126,25 @@ small_modbus_port_t modbus_tcp_rtos_port =
 int modbus_tcp_init(small_modbus_t *smb,small_modbus_port_t *port,void *config)
 {
     _modbus_init(smb);
-    smb->core = (small_modbus_core_t*)&modbus_tcp_core;
+    smb->core = (small_modbus_core_t*)&_modbus_tcp_core;
     smb->port_data = config;
     if(port ==NULL)
     {
-        smb->port = &modbus_tcp_rtos_port;
+        smb->port = &_modbus_tcp_rtos_port;
     }else {
         smb->port = port;
     }
     return 0;
 }
-int modbus_tcp_listen(small_modbus_t *smb,int port)
+int modbus_tcp_listen(small_modbus_t *smb,uint16_t port)
 {
     return 0;
 }
-int modbus_tcp_accept(small_modbus_t *smb,int port)
+int modbus_tcp_accept(small_modbus_t *smb,int socket_fd)
 {
     return 0;
 }
-int modbus_tcp_set_socket(small_modbus_t *smb,int fd)
+int modbus_tcp_set_socket(small_modbus_t *smb,int socket_fd)
 {
     return 0;
 }

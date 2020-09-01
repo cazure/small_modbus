@@ -145,6 +145,10 @@ int _modbus_reg2array(void *dest_array,uint8_t *source_reg,uint16_t reg_num)
     return reg_num;
 }
 
+char *_modbus_get_ver(void)
+{
+    return "small_modbus_v1.00";
+}
 /*
  * *
  */
@@ -357,15 +361,12 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
 /* handle confirmation message */
 int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_len,uint8_t *response,uint16_t response_len,void *read_data)
 {
-    uint8_t *u8p = read_data;
-    uint16_t *u16p = read_data;
     uint8_t request_function = request[smb->core->len_header];
     uint8_t response_function = response[smb->core->len_header];
     uint16_t calc_length = smb->core->len_header + smb->core->len_checksum ; // header + checksum
     uint16_t temp = 0;
     uint16_t data_num = 0;
-    uint16_t data_cnt = 0;
-    uint8_t byte_num = 0,n = 0,m = 0,b = 0;
+    uint16_t byte_num = 0;
     if(response_function >= 0x80)
     {
         if((response_function - 0x80) == request_function)
@@ -430,7 +431,6 @@ int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_
             case MODBUS_FC_READ_HOLDING_REGISTERS:
             case MODBUS_FC_READ_INPUT_REGISTERS:
                 {
-                    data_cnt = 0;
                     // 计算读取线圈数量
                     data_num = (request[smb->core->len_header+3]<<8)|(request[smb->core->len_header+4]);  //data length
                     temp = data_num*2;
@@ -490,7 +490,7 @@ int modbus_wait_poll(small_modbus_t *smb,uint8_t *request)
     while (read_want != 0)
     {
         rc = smb->port->select(smb,wait_time);
-        if(rc <= 0)
+        if(rc < 0)
         {
             smb->port->debug(smb,0,"[%d]select(%d) \n",rc,wait_time);
             return rc;
@@ -549,6 +549,7 @@ int modbus_wait_poll(small_modbus_t *smb,uint8_t *request)
                 default:
                     read_want = 0;
                 }
+                read_want += smb->core->len_checksum;
                 if((read_want+read_length)> smb->core->len_adu_max )
                 {
                     smb->port->debug(smb,0,"More than ADU %d > %d\n",(read_want+read_length),smb->core->len_adu_max);
@@ -560,18 +561,25 @@ int modbus_wait_poll(small_modbus_t *smb,uint8_t *request)
     }
     return smb->core->check_wait_poll(smb,request,read_length);
 }
+
+
+
 /* handle query data */
 int modbus_handle_poll(small_modbus_t *smb,uint8_t *request,uint16_t request_len,small_modbus_mapping_t * mapping_tab)
 {
     //uint8_t *request = smb->read_buff;
+    int response_exception = MODBUS_OK;
+    uint16_t response_len = 0;
     uint8_t *response = smb->write_buff;
-    uint8_t query_slave = request[smb->core->len_header-1];
+    uint8_t query_slave = smb->slave_addr;//request[smb->core->len_header-1];
     uint8_t query_function = request[smb->core->len_header];
-    uint16_t query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];
+    uint16_t query_address = 0;
     uint16_t query_num = 0;
-    uint16_t map_address = 0,map_num = 0;
-    uint8_t *map_8bit;
-    uint16_t *map_16bit;
+    uint16_t map_address = 0;
+    uint16_t map_num = 0;
+    uint8_t *map_8array;
+    uint16_t *map_16array;
+    uint16_t temp = 0;
 
     /* Data are flushed on illegal number of values errors. */
     switch (query_function)
@@ -583,29 +591,28 @@ int modbus_handle_poll(small_modbus_t *smb,uint8_t *request,uint16_t request_len
             {
                 map_address = mapping_tab->bit.start;
                 map_num = mapping_tab->bit.num;
-                map_8bit = mapping_tab->bit.array;
+                map_8array = mapping_tab->bit.array;
             }else
             {
                 map_address = mapping_tab->input_bit.start;
                 map_num = mapping_tab->input_bit.num;
-                map_8bit = mapping_tab->input_bit.array;
+                map_8array = mapping_tab->input_bit.array;
             }
-            query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];
-
+            query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];
             if((map_address <= query_address) && (query_address <= (map_address + map_num)) ) //起始地址
             {
                 int diff = query_address - map_address;
-                if((0  < query_num )&&( query_num <= (map_num-diff)))//查询数量
+                query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];//查询数量
+                if((0  < query_num )&&( query_num <= (map_num-diff)))
                 {
-                    smb->core->build_request_header(smb,response,query_slave,query_function,query_address,query_num);
-
-    //                rsp_length = ctx->core->build_response_basis(&sft, rsp);
-    //                rsp[rsp_length++] = (nb / 8) + ((nb % 8) ? 1 : 0);
-    //                rsp_length = response_io_status(tab_bits, mapping_address, nb,rsp, rsp_length);
-                }
-
-            }
+                    response_len = smb->core->build_response_header(smb,response,query_slave,query_function);
+                    temp = _modbus_array2bit(&(response[response_len+1]), map_8array+diff, query_num);  //数组转modbus bit
+                    response[response_len++] = temp;
+                    response_len += temp;
+                }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE;}
+            }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS;}
         }break;
+
         case MODBUS_FC_READ_HOLDING_REGISTERS:
         case MODBUS_FC_READ_INPUT_REGISTERS:
         {
@@ -613,273 +620,170 @@ int modbus_handle_poll(small_modbus_t *smb,uint8_t *request,uint16_t request_len
             {
                 map_address = mapping_tab->registers.start;
                 map_num = mapping_tab->registers.num;
-                map_16bit = mapping_tab->registers.array;
+                map_16array = mapping_tab->registers.array;
             }else
             {
                 map_address = mapping_tab->input_registers.start;
                 map_num = mapping_tab->input_registers.num;
-                map_16bit = mapping_tab->input_registers.array;
+                map_16array = mapping_tab->input_registers.array;
             }
-            query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];
-
+            query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];
             if((map_address <= query_address) && (query_address <= (map_address + map_num)) ) //起始地址
             {
                 int diff = query_address - map_address;
-                if((0  < query_num )&&( query_num <= (map_num-diff)))//查询数量
+                query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];//查询数量
+                if((0  < query_num )&&( query_num <= (map_num-diff)))
                 {
-                    smb->core->build_request_header(smb,response,query_slave,query_function,query_address,query_num);
-
-    //                rsp_length = ctx->core->build_response_basis(&sft, rsp);
-    //                rsp[rsp_length++] = (nb / 8) + ((nb % 8) ? 1 : 0);
-    //                rsp_length = response_io_status(tab_bits, mapping_address, nb,rsp, rsp_length);
-                }
-
-            }
-//            unsigned int is_input = (function == MODBUS_FC_READ_INPUT_REGISTERS);
-//            int start_registers = is_input ? mb_mapping->start_input_registers : mb_mapping->start_registers;
-//            int nb_registers = is_input ? mb_mapping->nb_input_registers : mb_mapping->nb_registers;
-//            uint16_t *tab_registers = is_input ? mb_mapping->tab_input_registers : mb_mapping->tab_registers;
-//            const char * const name = is_input ? "read_input_registers" : "read_registers";
-//            int nb = (req[offset + 3] << 8) + req[offset + 4];
-//            /* The mapping can be shifted to reduce memory consumption and it
-//               doesn't always start at address zero. */
-//            int mapping_address = address - start_registers;
-//
-//            if (nb < 1 || MODBUS_MAX_READ_REGISTERS < nb) {
-//                ctx->backend->debug(0,"Illegal nb of values %d in %s (max %d)\n",nb, name, MODBUS_MAX_READ_REGISTERS);
-//                rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, TRUE);
-//            } else if (mapping_address < 0 || (mapping_address + nb) > nb_registers) {
-//                ctx->backend->debug(0,"Illegal data address 0x%0X in %s\n",mapping_address < 0 ? address : address + nb, name);
-//                rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, FALSE);
-//            } else {
-//                int i;
-//                rsp_length = ctx->core->build_response_basis(&sft, rsp);
-//                rsp[rsp_length++] = nb << 1;
-//                for (i = mapping_address; i < mapping_address + nb; i++)
-//                {
-//                    rsp[rsp_length++] = tab_registers[i] >> 8;
-//                    rsp[rsp_length++] = tab_registers[i] & 0xFF;
-//                }
-//            }
+                    response_len = smb->core->build_response_header(smb,response,query_slave,query_function);
+                    temp = _modbus_array2reg(&(response[response_len+1]), map_16array+diff, query_num);  //数组转modbus reg
+                    response[response_len++] = temp;
+                    response_len += temp;
+                }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE;}
+            }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS;}
         }break;
 
-
-//    case MODBUS_FC_READ_HOLDING_REGISTERS:
-//    case MODBUS_FC_READ_INPUT_REGISTERS: {
-//        unsigned int is_input = (function == MODBUS_FC_READ_INPUT_REGISTERS);
-//        int start_registers = is_input ? mb_mapping->start_input_registers : mb_mapping->start_registers;
-//        int nb_registers = is_input ? mb_mapping->nb_input_registers : mb_mapping->nb_registers;
-//        uint16_t *tab_registers = is_input ? mb_mapping->tab_input_registers : mb_mapping->tab_registers;
-//        const char * const name = is_input ? "read_input_registers" : "read_registers";
-//        int nb = (req[offset + 3] << 8) + req[offset + 4];
-//        /* The mapping can be shifted to reduce memory consumption and it
-//           doesn't always start at address zero. */
-//        int mapping_address = address - start_registers;
-//
-//        if (nb < 1 || MODBUS_MAX_READ_REGISTERS < nb) {
-//            ctx->backend->debug(0,"Illegal nb of values %d in %s (max %d)\n",nb, name, MODBUS_MAX_READ_REGISTERS);
-//            rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, TRUE);
-//        } else if (mapping_address < 0 || (mapping_address + nb) > nb_registers) {
-//            ctx->backend->debug(0,"Illegal data address 0x%0X in %s\n",mapping_address < 0 ? address : address + nb, name);
-//            rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, FALSE);
-//        } else {
-//            int i;
-//            rsp_length = ctx->core->build_response_basis(&sft, rsp);
-//            rsp[rsp_length++] = nb << 1;
-//            for (i = mapping_address; i < mapping_address + nb; i++)
-//            {
-//                rsp[rsp_length++] = tab_registers[i] >> 8;
-//                rsp[rsp_length++] = tab_registers[i] & 0xFF;
-//            }
-//        }
-//    }
-//        break;
-//    case MODBUS_FC_WRITE_SINGLE_COIL: {
-//        int mapping_address = address - mb_mapping->start_bits;
-//
-//        if (mapping_address < 0 || mapping_address >= mb_mapping->nb_bits) {
-//            ctx->backend->debug(0,"Illegal data address 0x%0X in write_bit\n",address);
-//            rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, FALSE);
-//        } else {
-//            int data = (req[offset + 3] << 8) + req[offset + 4];
-//
-//            if (data == 0xFF00 || data == 0x0) {
-//                mb_mapping->tab_bits[mapping_address] = data ? ON : OFF;
-//                memcpy(rsp, req, req_length);
-//                rsp_length = req_length;
-//            } else {
-//                ctx->backend->debug(0,"Illegal data value 0x%0X in write_bit request at address %0X\n",data, address);
-//                rsp_length = response_exception(ctx, &sft,MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, FALSE);
-//            }
-//        }
-//    }
-//        break;
-//    case MODBUS_FC_WRITE_SINGLE_REGISTER: {
-//        int mapping_address = address - mb_mapping->start_registers;
-//
-//        if (mapping_address < 0 || mapping_address >= mb_mapping->nb_registers)
-//        {
-//            ctx->backend->debug(0,"Illegal data address 0x%0X in write_register\n",address);
-//            rsp_length = response_exception(ctx, &sft,MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, FALSE);
-//        } else {
-//            int data = (req[offset + 3] << 8) + req[offset + 4];
-//            mb_mapping->tab_registers[mapping_address] = data;
-//            memcpy(rsp, req, req_length);
-//            rsp_length = req_length;
-//        }
-//    }
-//        break;
-//    case MODBUS_FC_WRITE_MULTIPLE_COILS: {
-//        int nb = (req[offset + 3] << 8) + req[offset + 4];
-//        int mapping_address = address - mb_mapping->start_bits;
-//
-//        if (nb < 1 || MODBUS_MAX_WRITE_BITS < nb) {
-//            /* May be the indication has been truncated on reading because of
-//             * invalid address (eg. nb is 0 but the request contains values to
-//             * write) so it's necessary to flush. */
-//            ctx->backend->debug(0,"Illegal number of values %d in write_bits (max %d)\n",nb, MODBUS_MAX_WRITE_BITS);
-//            rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, TRUE);
-//
-//        } else if (mapping_address < 0 || (mapping_address + nb) > mb_mapping->nb_bits)
-//        {
-//            ctx->backend->debug(0,"Illegal data address 0x%0X in write_bits\n",mapping_address < 0 ? address : address + nb);
-//            rsp_length = response_exception(ctx, &sft,MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, FALSE);
-//        } else {
-//            /* 6 = byte count */
-//            modbus_set_bits_from_bytes(mb_mapping->tab_bits, mapping_address, nb,&req[offset + 6]);
-//            rsp_length = ctx->core->build_response_basis(&sft, rsp);
-//            /* 4 to copy the bit address (2) and the quantity of bits */
-//            memcpy(rsp + rsp_length, req + rsp_length, 4);
-//            rsp_length += 4;
-//        }
-//    }
-//        break;
-//    case MODBUS_FC_WRITE_MULTIPLE_REGISTERS: {
-//        int nb = (req[offset + 3] << 8) + req[offset + 4];
-//        int mapping_address = address - mb_mapping->start_registers;
-//
-//        if (nb < 1 || MODBUS_MAX_WRITE_REGISTERS < nb)
-//        {
-//            ctx->backend->debug(0,"Illegal number of values %d in write_registers (max %d)\n",nb, MODBUS_MAX_WRITE_REGISTERS);
-//            rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, TRUE);
-//        } else if (mapping_address < 0 || (mapping_address + nb) > mb_mapping->nb_registers)
-//        {
-//            ctx->backend->debug(0,"Illegal data address 0x%0X in write_registers\n",mapping_address < 0 ? address : address + nb);
-//            rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, FALSE);
-//        } else {
-//            int i, j;
-//            for (i = mapping_address, j = 6; i < mapping_address + nb; i++, j += 2) {
-//                /* 6 and 7 = first value */
-//                mb_mapping->tab_registers[i] =
-//                    (req[offset + j] << 8) + req[offset + j + 1];
-//            }
-//
-//            rsp_length = ctx->core->build_response_basis(&sft, rsp);
-//            /* 4 to copy the address (2) and the no. of registers */
-//            memcpy(rsp + rsp_length, req + rsp_length, 4);
-//            rsp_length += 4;
-//        }
-//    }
-//        break;
-//    case MODBUS_FC_REPORT_SLAVE_ID: {
-//        int str_len;
-//        int byte_count_pos;
-//
-//        rsp_length = ctx->core->build_response_basis(&sft, rsp);
-//        /* Skip byte count for now */
-//        byte_count_pos = rsp_length++;
-//        rsp[rsp_length++] = _REPORT_SLAVE_ID;
-//        /* Run indicator status to ON */
-//        rsp[rsp_length++] = 0xFF;
-//        /* LMB + length of LIBMODBUS_VERSION_STRING */
-//        str_len = 3 + strlen(LIBMODBUS_VERSION_STRING);
-//        memcpy(rsp + rsp_length, "LMB" LIBMODBUS_VERSION_STRING, str_len);
-//        rsp_length += str_len;
-//        rsp[byte_count_pos] = rsp_length - byte_count_pos - 1;
-//    }
-//        break;
-//    case MODBUS_FC_READ_EXCEPTION_STATUS:
-//        ctx->backend->debug(0,"FIXME Not implemented\n");
-//        return -1;
-//        //break;
-//    case MODBUS_FC_MASK_WRITE_REGISTER: {
-//        int mapping_address = address - mb_mapping->start_registers;
-//
-//        if (mapping_address < 0 || mapping_address >= mb_mapping->nb_registers)
-//        {
-//            ctx->backend->debug(0,"Illegal data address 0x%0X in write_register\n",address);
-//            rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, FALSE);
-//        } else
-//        {
-//            uint16_t data = mb_mapping->tab_registers[mapping_address];
-//            uint16_t and = (req[offset + 3] << 8) + req[offset + 4];
-//            uint16_t or = (req[offset + 5] << 8) + req[offset + 6];
-//
-//            data = (data & and) | (or & (~and));
-//            mb_mapping->tab_registers[mapping_address] = data;
-//            memcpy(rsp, req, req_length);
-//            rsp_length = req_length;
-//        }
-//    }
-//        break;
-//    case MODBUS_FC_WRITE_AND_READ_REGISTERS: {
-//        int nb = (req[offset + 3] << 8) + req[offset + 4];
-//        uint16_t address_write = (req[offset + 5] << 8) + req[offset + 6];
-//        int nb_write = (req[offset + 7] << 8) + req[offset + 8];
-//        int nb_write_bytes = req[offset + 9];
-//        int mapping_address = address - mb_mapping->start_registers;
-//        int mapping_address_write = address_write - mb_mapping->start_registers;
-//
-//        if (nb_write < 1 || MODBUS_MAX_WR_WRITE_REGISTERS < nb_write ||
-//            nb < 1 || MODBUS_MAX_WR_READ_REGISTERS < nb ||
-//            nb_write_bytes != nb_write * 2)
-//        {
-//                ctx->backend->debug(0,"Illegal nb of values (W%d, R%d) in write_and_read_registers (max W%d, R%d)\n",
-//                nb_write, nb, MODBUS_MAX_WR_WRITE_REGISTERS, MODBUS_MAX_WR_READ_REGISTERS);
-//
-//                rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE, rsp, TRUE);
-//        } else if (mapping_address < 0 ||
-//                   (mapping_address + nb) > mb_mapping->nb_registers ||
-//                   mapping_address < 0 ||
-//                   (mapping_address_write + nb_write) > mb_mapping->nb_registers)
-//        {
-//
-//            ctx->backend->debug(0,"Illegal data read address 0x%0X or write address 0x%0X write_and_read_registers\n",
-//            mapping_address < 0 ? address : address + nb,mapping_address_write < 0 ? address_write : address_write + nb_write);
-//
-//            rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS, rsp, FALSE);
-//        } else {
-//            int i, j;
-//            rsp_length = ctx->core->build_response_basis(&sft, rsp);
-//            rsp[rsp_length++] = nb << 1;
-//
-//            /* Write first.
-//               10 and 11 are the offset of the first values to write */
-//            for (i = mapping_address_write, j = 10;
-//                 i < mapping_address_write + nb_write; i++, j += 2) {
-//                mb_mapping->tab_registers[i] =
-//                    (req[offset + j] << 8) + req[offset + j + 1];
-//            }
-//
-//            /* and read the data for the response */
-//            for (i = mapping_address; i < mapping_address + nb; i++) {
-//                rsp[rsp_length++] = mb_mapping->tab_registers[i] >> 8;
-//                rsp[rsp_length++] = mb_mapping->tab_registers[i] & 0xFF;
-//            }
-//        }
-//    }
-//        break;
-//
-//    default:
-//        ctx->backend->debug(0,"Unknown Modbus function code: 0x%0X\n", function);
-//        rsp_length = response_exception(ctx, &sft, MODBUS_EXCEPTION_ILLEGAL_FUNCTION, rsp, TRUE);
-//        break;
+        case MODBUS_FC_WRITE_SINGLE_COIL:
+        {
+            map_address =   mapping_tab->bit.start;
+            map_num =       mapping_tab->bit.num;
+            map_8array =    mapping_tab->bit.array;
+            query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];
+            if((map_address <= query_address) && (query_address <= (map_address + map_num)) ) //起始地址
+            {
+                int diff = query_address - map_address;
+                query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];//数据
+                if (query_num == 0xFF00 || query_num == 0x0)
+                {
+                    map_8array[diff] = query_num ? 1 : 0;
+                    response_len = smb->core->build_response_header(smb,response,query_slave,query_function);
+                    response[response_len++] = (query_address>>8);
+                    response[response_len++] = (query_address&0x00ff);
+                    response[response_len++] = (query_num>>8);
+                    response[response_len++] = (query_num&0x00ff);
+                }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE;}
+            }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS;}
+        }break;
+        case MODBUS_FC_WRITE_SINGLE_REGISTER:
+        {
+            map_address =   mapping_tab->registers.start;
+            map_num =       mapping_tab->registers.num;
+            map_16array =    mapping_tab->registers.array;
+            query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];
+            if((map_address <= query_address) && (query_address <= (map_address + map_num)) ) //起始地址
+            {
+                int diff = query_address - map_address;
+                query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];//数据
+                map_16array[diff] = query_num;
+                response_len = smb->core->build_response_header(smb,response,query_slave,query_function);
+                response[response_len++] = (query_address>>8);
+                response[response_len++] = (query_address&0x00ff);
+                response[response_len++] = (query_num>>8);
+                response[response_len++] = (query_num&0x00ff);
+            }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS;}
+        }break;
+        case MODBUS_FC_WRITE_MULTIPLE_COILS:
+        {
+            map_address =   mapping_tab->bit.start;
+            map_num =       mapping_tab->bit.num;
+            map_8array =    mapping_tab->bit.array;
+            query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];
+            if((map_address <= query_address) && (query_address <= (map_address + map_num)) ) //起始地址
+            {
+                int diff = query_address - map_address;
+                query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];//查询数量
+                temp = (query_num / 8) + ((query_num % 8) ? 1 : 0); //数据长度
+                if((0  < query_num )&&( query_num <= (map_num-diff)) && (temp == request[smb->core->len_header + 5]) )
+                {
+                    temp = _modbus_bit2array(map_8array+diff,&(response[smb->core->len_header + 6]),query_num);   //modbus bit 转数组
+                    response_len = smb->core->build_response_header(smb,response,query_slave,query_function);
+                    response[response_len++] = (query_address>>8);
+                    response[response_len++] = (query_address&0x00ff);
+                    response[response_len++] = (query_num>>8);
+                    response[response_len++] = (query_num&0x00ff);
+                }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE;}
+            }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS;}
+        }break;
+        case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
+        {
+            map_address =   mapping_tab->registers.start;
+            map_num =       mapping_tab->registers.num;
+            map_16array =    mapping_tab->registers.array;
+            query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];
+            if((map_address <= query_address) && (query_address <= (map_address + map_num)) ) //起始地址
+            {
+                int diff = query_address - map_address;
+                query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];//查询数量
+                temp = (query_num * 2); //数据长度
+                if((0  < query_num )&&( query_num <= (map_num-diff)) && (temp == request[smb->core->len_header + 5]) )
+                {
+                    temp = _modbus_reg2array(map_16array+diff,&(response[smb->core->len_header + 6]),query_num);   //modbus bit 转数组
+                    response_len = smb->core->build_response_header(smb,response,query_slave,query_function);
+                    response[response_len++] = (query_address>>8);
+                    response[response_len++] = (query_address&0x00ff);
+                    response[response_len++] = (query_num>>8);
+                    response[response_len++] = (query_num&0x00ff);
+                }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE;}
+            }else{response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS;}
+        }break;
+        case MODBUS_FC_REPORT_SLAVE_ID:
+        {
+            temp = strlen(_modbus_get_ver());
+            response_len = smb->core->build_response_header(smb,response,query_slave,query_function);
+            response[response_len++] =  temp+2;
+            response[response_len++] =  smb->slave_addr;
+            /* Run indicator status to ON */
+            response[response_len++] =  0XFF;
+            memcpy(response + response_len, _modbus_get_ver(), temp);
+            response_len += temp;
+        }break;
+        case MODBUS_FC_READ_EXCEPTION_STATUS:
+        {
+            response_exception = MODBUS_EXCEPTION_ILLEGAL_FUNCTION;
+        }break;
+        case MODBUS_FC_MASK_WRITE_REGISTER:
+        {
+            response_exception = MODBUS_EXCEPTION_ILLEGAL_FUNCTION;
+        }break;
+        case MODBUS_FC_WRITE_AND_READ_REGISTERS:
+        {
+            response_exception = MODBUS_EXCEPTION_ILLEGAL_FUNCTION;
+        }break;
+        default:
+        {
+            response_exception = MODBUS_EXCEPTION_ILLEGAL_FUNCTION;
+        }break;
     }
 
-    /* Suppress any responses when the request was a broadcast */
- //   return (slave == MODBUS_BROADCAST_ADDRESS) ? 0 : send_msg(ctx, rsp, rsp_length);
+    if(response_exception != MODBUS_OK)
+    {
+        switch(response_exception)
+        {
+            case MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE:
+            {
+                smb->port->debug(smb,0,"slave:0x%0X,function:0x%0X,Illegal num:%d not at [1-%d]\n",query_slave,query_function,query_num,map_num);
+            }break;
+            case MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS:
+            {
+                smb->port->debug(smb,0,"slave:0x%0X,function:0x%0X,Illegal data:%d not at [1-%d]\n",query_slave,query_function,query_address,map_address);
+            }break;
+            default:
+            {
+                smb->port->debug(smb,0,"slave:0x%0X,Unknown Modbus function code: 0x%0X\n",query_slave,query_function);
+             }break;
+        }
+        response_len = smb->core->build_response_header(smb,response,query_slave,query_function+0x80);
+        response[response_len++] = response_exception;
+    }
 
-
+    if(response_len)
+    {
+        response_len = smb->core->check_send_pre(smb,response,response_len);
+        if(response_len > 0)
+        {
+             _modbus_write(smb,response, response_len);
+             return response_len;
+        }
+    }
     return MODBUS_FAIL;
 }
 
@@ -894,7 +798,7 @@ int modbus_wait(small_modbus_t *smb,small_modbus_mapping_t * mapping_tab)
 }
 
 /* read */
-int modbus_read_bits(small_modbus_t *smb, int addr, int num, uint8_t *read_data)
+int modbus_read_bits(small_modbus_t *smb, int addr, int num,uint8_t *read_data)
 {
     int request_len = 0;
     int response_len = 0;
@@ -912,7 +816,7 @@ int modbus_read_bits(small_modbus_t *smb, int addr, int num, uint8_t *read_data)
     }
     return MODBUS_FAIL;
 }
-int modbus_read_input_bits(small_modbus_t *smb, int addr, int num, uint8_t *read_data)
+int modbus_read_input_bits(small_modbus_t *smb, int addr, int num,uint8_t *read_data)
 {
     int request_len = 0;
     int response_len = 0;
@@ -930,7 +834,7 @@ int modbus_read_input_bits(small_modbus_t *smb, int addr, int num, uint8_t *read
     }
     return MODBUS_FAIL;
 }
-int modbus_read_registers(small_modbus_t *smb, int addr, int num, uint16_t *read_data)
+int modbus_read_registers(small_modbus_t *smb, int addr, int num,uint16_t *read_data)
 {
     int request_len = 0;
     int response_len = 0;
@@ -948,7 +852,7 @@ int modbus_read_registers(small_modbus_t *smb, int addr, int num, uint16_t *read
     }
     return MODBUS_FAIL;
 }
-int modbus_read_input_registers(small_modbus_t *smb, int addr, int num, uint16_t *read_data)
+int modbus_read_input_registers(small_modbus_t *smb, int addr, int num,uint16_t *read_data)
 {
     int request_len = 0;
     int response_len = 0;
@@ -968,7 +872,7 @@ int modbus_read_input_registers(small_modbus_t *smb, int addr, int num, uint16_t
 }
 
 /* write */
-int modbus_write_bit(small_modbus_t *smb, int addr, int write_status)
+int modbus_write_bit(small_modbus_t *smb, int addr,int write_status)
 {
     int request_len = 0;
     int response_len = 0;
@@ -987,7 +891,7 @@ int modbus_write_bit(small_modbus_t *smb, int addr, int write_status)
     }
     return MODBUS_FAIL;
 }
-int modbus_write_register(small_modbus_t *smb, int addr, int write_value)
+int modbus_write_register(small_modbus_t *smb, int addr,int write_value)
 {
     int request_len = 0;
     int response_len = 0;
@@ -1006,7 +910,7 @@ int modbus_write_register(small_modbus_t *smb, int addr, int write_value)
     }
     return MODBUS_FAIL;
 }
-int modbus_write_bits(small_modbus_t *smb, int addr, int num, const uint8_t *write_data)
+int modbus_write_bits(small_modbus_t *smb, int addr, int num,uint8_t *write_data)
 {
     int request_len = 0;
     int response_len = 0;
@@ -1024,7 +928,7 @@ int modbus_write_bits(small_modbus_t *smb, int addr, int num, const uint8_t *wri
     }
     return MODBUS_FAIL;
 }
-int modbus_write_registers(small_modbus_t *smb, int addr, int num, const uint16_t *write_data)
+int modbus_write_registers(small_modbus_t *smb, int addr, int num,uint16_t *write_data)
 {
     int request_len = 0;
     int response_len = 0;
@@ -1050,7 +954,7 @@ int modbus_mask_write_register(small_modbus_t *smb, int addr, uint16_t and_mask,
     return MODBUS_FAIL;
 }
 
-int modbus_write_and_read_registers(small_modbus_t *smb, int write_addr, int write_nb,const uint16_t *src, int read_addr, int read_nb,uint16_t *dest)
+int modbus_write_and_read_registers(small_modbus_t *smb, int write_addr, int write_nb,uint16_t *src, int read_addr, int read_nb,uint16_t *dest)
 {
     return MODBUS_FAIL;
 }

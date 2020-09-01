@@ -2,6 +2,7 @@
 #include "string.h"
 #include "modbus_rtu_rtos.h"
 
+#include "controller.h"
 #define DBG_ENABLE
 #define DBG_SECTION_NAME    "modbus"
 #define DBG_LEVEL           DBG_LOG//DBG_INFO
@@ -10,29 +11,47 @@
 
 #define delay_ms        rt_thread_mdelay
 
-small_modbus_mapping_t modbus_mapping = {0};
-
-small_modbus_t modbus_slave = {0};
+static small_modbus_mapping_t modbus_mapping = {0};
+static small_modbus_t modbus_slave = {0};
 #define MODBUS_PRINTF(...)   modbus_debug((&modbus_slave),2,__VA_ARGS__)
 
-void modbus_slave_thread(void *param)
+static int modbus_rtu_status_callback(small_modbus_mapping_t *mapping,int read_write,int data_type,int start,int num)
+{
+
+    return MODBUS_OK;
+}
+
+void modbus_rtu_slave_thread(void *param)
 {
     int rc = 0;
-    uint8_t receive_buf[128];
-    modbus_rtu_init(&modbus_slave,NULL,&uart6_config);
-    modbus_set_slave(&modbus_slave,6);
+    static uint8_t receive_buf[128];
+
+   // modbus_mapping_new(modbus_mapping,modbus_rtu_status_callback,0,64,0,64,0,64,0,64);
+    controller_t * con = &controller;
+
+    modbus_mapping_init(modbus_mapping,modbus_rtu_status_callback,
+            con->io.DO.start,con->io.DO.num,con->io.DO.array,
+            con->io.DI.start,con->io.DI.num,con->io.DI.array,
+            con->io.AO.start,con->io.AO.num,con->io.AO.array,
+            con->io.AI.start,con->io.AI.num,con->io.AI.array);
+
+
+    modbus_rtu_init(&modbus_slave,NULL,&uart3_config);
+    modbus_set_slave(&modbus_slave,8);
     modbus_connect(&modbus_slave);
     while (1)
     {
             rc = modbus_wait_poll(&modbus_slave, receive_buf);
+            MODBUS_PRINTF("[slave]%d\n",rc);
 			if (rc > 0)
 			{
-			    MODBUS_PRINTF("\n[1]------ receive %d --------\n",rc);
 				rc = modbus_handle_poll(&modbus_slave,receive_buf, rc,&modbus_mapping);
+				if(rc)
+				{
+		            MODBUS_PRINTF("[slave] ok %d\n",rc);
+				}
 			}else
 			{
-			    MODBUS_PRINTF("\n[1]------ receive failed ---------\n");
-				delay_ms(10);
 				modbus_error_recovery(&modbus_slave);
 			}
     }
@@ -43,11 +62,11 @@ small_modbus_t modbus_master = {0};
 #undef MODBUS_PRINTF
 #define MODBUS_PRINTF(...)   modbus_debug((&modbus_master),2,__VA_ARGS__)
 
-void modbus_master_thread(void *param)
+void modbus_rtu_master_thread(void *param)
 {
     uint16_t tab_reg[64] = {0};
-    modbus_rtu_init(&modbus_master,NULL,&uart3_config);
-    modbus_set_slave(&modbus_master,6);
+    modbus_rtu_init(&modbus_master,NULL,&uart6_config);
+    modbus_set_slave(&modbus_master,9);
     modbus_connect(&modbus_master);
     int regs =0 ,num = 0;
     while (1)
@@ -82,21 +101,20 @@ void modbus_master_thread(void *param)
 }
 
 
-int app_modbus_init(void)
+int modbus_rtu_test(void)
 {
     rt_thread_t tid3,tid6;
     uint8_t type = 0;
     LOG_I("init %d",type);
 
-    modbus_mapping_init(modbus_mapping,modbus_status_callback,0,64,0,64,0,64,0,64);
 
-    tid3 = rt_thread_create("modbus S",modbus_slave_thread, RT_NULL,2048,20, 10);
+    tid3 = rt_thread_create("modbus S",modbus_rtu_slave_thread, RT_NULL,2048,20, 10);
     if (tid3 != RT_NULL)
         rt_thread_startup(tid3);
 
-    tid6 = rt_thread_create("modbus M",modbus_master_thread, RT_NULL,2048,20, 10);
-    if (tid6 != RT_NULL)
-        rt_thread_startup(tid6);
+//    tid6 = rt_thread_create("modbus M",modbus_rtu_master_thread, RT_NULL,2048,20, 10);
+//    if (tid6 != RT_NULL)
+//        rt_thread_startup(tid6);
     return 0;
 }
-MSH_CMD_EXPORT(app_modbus_init,modbus test)
+MSH_CMD_EXPORT(modbus_rtu_test,modbus rtu test)
