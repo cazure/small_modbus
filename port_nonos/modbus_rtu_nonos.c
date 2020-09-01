@@ -5,28 +5,54 @@
  */
 #include "modbus_rtu_nonos.h"
 
-int rtos_open(modbus_t *ctx)
+int rts_set(small_modbus_t *ctx, int on)
+{
+	if(on)
+	{
+		HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin,GPIO_PIN_RESET);
+		HAL_Delay(1);
+	}else
+	{
+		HAL_Delay(1);
+		HAL_GPIO_WritePin(RS485_DIR_GPIO_Port, RS485_DIR_Pin,GPIO_PIN_SET);
+	}
+	return 0;
+}
+
+modbus_rtu_config_t uart2_config =
+{
+	.name = "uart2",
+	.myuart = &myuart2,
+	.rts_set = rts_set
+};
+
+int hw_uart_init(void)
 {
 	bus_myuart_init();
-    return 0;
-}
-int rtos_close(modbus_t *ctx)
-{
-    modbus_rtu_config_t *ctx_rtu = ctx->backend_data;
-//    if (ctx->fd != -1) {
-//        tcsetattr(ctx->fd, TCSANOW, &ctx_rtu->old_tios);
-//        close(ctx->fd);
-//        ctx->fd = -1;
-//    }
-    return 0;
 }
 
-int rtos_read(modbus_t *ctx,uint8_t *data, uint16_t length)
+int rtu_open(small_modbus_t *smb)
+{
+	modbus_rtu_config_t *config = smb->port_data;
+	smb->port->debug(smb,0,"open:%s\n",config->name);
+	if(config->rts_set)
+			config->rts_set(smb,0);
+	return 0;
+}
+int rtu_close(small_modbus_t *smb)
+{
+	modbus_rtu_config_t *config = smb->port_data;
+	smb->port->debug(smb,0,"close:%s\n",config->name);
+	if(config->rts_set)
+			config->rts_set(smb,0);
+	return 0;
+}
+
+int rtu_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
 {
     int rc = 0;
-    //modbus_rtu_config_t *ctx_rtu = ctx->backend_data;
- //   rc =  read(ctx->fd, data, length);
-
+    modbus_rtu_config_t *config = smb->port_data;
+		rc = myuart_read(config->myuart,data,length,1000);
 //    int i;
 //    rt_kprintf("read %d,%d :",rc,length);
 //    for (i = 0; i < rc; i++)
@@ -34,18 +60,20 @@ int rtos_read(modbus_t *ctx,uint8_t *data, uint16_t length)
 //            rt_kprintf("<%02X>", data[i]);
 //    }
 //    rt_kprintf("\n");
-		rc = myuart_read(&myuart2,data,length,1000);
 
     return rc;
 }
-int rtos_write(modbus_t *ctx,uint8_t *data, uint16_t length)
+int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 {
-    modbus_rtu_config_t *ctx_rtu = ctx->backend_data;
-    if(ctx_rtu->rts_set)
-        ctx_rtu->rts_set(ctx,1);
+    modbus_rtu_config_t *config = smb->port_data;
+    if(config->rts_set)
+        config->rts_set(smb,1);
+		
+		myuart_write(config->myuart,data,length,1000);
 
- //   write(ctx->fd, data, length);
-
+    if(config->rts_set)
+        config->rts_set(smb,0);
+		
 //    int i;
 //    rt_kprintf("write %d :",length);
 //    for (i = 0; i < length; i++)
@@ -53,132 +81,65 @@ int rtos_write(modbus_t *ctx,uint8_t *data, uint16_t length)
 //            rt_kprintf("<%02X>", data[i]);
 //    }
 //    rt_kprintf("\n");
-		
-		
-		myuart_write(&myuart2,data,length,1000);
-
-    if(ctx_rtu->rts_set)
-        ctx_rtu->rts_set(ctx,0);
     return length;
 }
-int rtos_flush(modbus_t *ctx)
+int rtu_flush(small_modbus_t *smb)
 {
-	myuart_flush(&myuart2);
+	modbus_rtu_config_t *config = smb->port_data;
+	myuart_flush(config->myuart);
 	return 0;
 }
 
-int rtos_select(modbus_t *ctx,int timeout_ms)
+int rtu_select(small_modbus_t *smb,int timeout_ms)
 {
-    int rc = 0;
-		rc = myuart_select(&myuart2,timeout_ms);
-    return rc;
+	int rc = 0;	
+	modbus_rtu_config_t *config = smb->port_data;
+	rc = myuart_select(config->myuart,timeout_ms);
+	return rc;
 }
 
 #include "stdio.h"
 #include "string.h"
-static uint8_t now_level = 0;
 
-
-void rtos_debug(int level,const char *fmt, ...)
+static int rtu_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 {
-    static char log_buf[32];
-    if(level < now_level)
-    {
-//        va_list args;
-//        va_start(args, fmt);
-//        rt_vsnprintf(log_buf, 32, fmt, args);
-//        va_end(args);
-//        printf(log_buf);
-    }
+	modbus_rtu_config_t *config = smb->port_data;
+//	static char log_buf[32];
+//	if(level <= smb->debug_level)
+//	{
+//			va_list args;
+//			va_start(args, fmt);
+//			rt_vsnprintf(log_buf, 32, fmt, args);
+//			va_end(args);
+//			printf(log_buf);
+//	}
+	return 0;
 }
 
-
-modbus_backend_t modbus_rtu_rtos_backend =
+small_modbus_port_t _modbus_rtu_nonos_port =
 {
-    .read_timeout = 500,
-    .write_timeout = 100,
-    .open =  rtos_open,
-    .close = rtos_close,
-    .read =  rtos_read,
-    .write = rtos_write,
-    .flush = rtos_flush,
-    .select = rtos_select,
-    .debug = rtos_debug
+    .open =  rtu_open,
+    .close = rtu_close,
+    .read =  rtu_read,
+    .write = rtu_write,
+    .flush =  rtu_flush,
+    .select = rtu_select,
+    .debug =  rtu_debug
 };
 
-
-int modbus_rtu_init(modbus_t *ctx,modbus_backend_t *backend,void *config)
+int modbus_rtu_init(small_modbus_t *smb,small_modbus_port_t *port,void *config)
 {
-    ctx->core = (modbus_core_t*)&modbus_rtu_core;
-    ctx->backend_data = config;
-    if(backend == NULL)
+    _modbus_init(smb);
+    smb->core = (small_modbus_core_t*)&_modbus_rtu_core;
+    smb->port_data = config;
+    if(port ==NULL)
     {
-        ctx->backend = &modbus_rtu_rtos_backend;
+        smb->port = &_modbus_rtu_nonos_port;
+    }else {
+        smb->port = port;
     }
     return 0;
 }
-
-int modbus_rtu_config(modbus_t *ctx,char *device,int baud,uint8_t data_bit, uint8_t stop_bit,char parity)
-{
-    modbus_rtu_config_t * config = ctx->backend_data;
-    return 0;
-}
-
-int modbus_rtu_set_rts_ops(modbus_t *ctx,int (*rts_set)(modbus_t *ctx, int on))
-{
-    modbus_rtu_config_t * config = ctx->backend_data;
-    config->rts_set = rts_set;
-    return 0;
-}
-
-int modbus_rtu_set_open_ops(modbus_t *ctx, int (*open)(modbus_t *ctx))
-{
-    ctx->backend->open = open;
-    return 0;
-}
-
-int modbus_rtu_set_close_ops(modbus_t *ctx, int (*close)(modbus_t *ctx))
-{
-    ctx->backend->close = close;
-    return 0;
-}
-
-int modbus_rtu_set_read_ops(modbus_t *ctx, int (*read)(modbus_t *ctx,uint8_t *data,uint16_t length))
-{
-    ctx->backend->read = read;
-    return 0;
-}
-
-int modbus_rtu_set_write_ops(modbus_t *ctx, int (*write)(modbus_t *ctx,uint8_t *data,uint16_t length))
-{
-    ctx->backend->write = write;
-    return 0;
-}
-
-int modbus_rtu_set_flush_ops(modbus_t *ctx, int (*flush)(modbus_t *ctx))
-{
-    ctx->backend->flush = flush;
-    return 0;
-}
-
-int modbus_rtu_set_select_ops(modbus_t *ctx, int (*select)(modbus_t *ctx,int timeout_ms))
-{
-    ctx->backend->select = select;
-    return 0;
-}
-
-int modbus_rtu_set_read_timeout(modbus_t *ctx,int timeout_ms)
-{
-    ctx->backend->read_timeout = timeout_ms;
-    return timeout_ms;
-}
-
-int modbus_rtu_set_write_timeout(modbus_t *ctx,int timeout_ms)
-{
-    ctx->backend->write_timeout = timeout_ms;
-    return timeout_ms;
-}
-
 
 
 
