@@ -9,18 +9,66 @@
  */
 #include "modbus_tcp_rtos.h"
 
+int modbus_tcp_connect(small_modbus_t *smb,char *ip,uint16_t port);
+int modbus_tcp_listen(small_modbus_t *smb,uint16_t port);
+
+
 static int tcp_open(small_modbus_t *smb)
 {
+    int rc;
     modbus_tcp_config_t *config = smb->port_data;
-//    smb->port->debug(smb,0,"open:%s baud:%d \n",config->name,config->config.baud_rate);
-//    rt_ringbuffer_reset(&(config->rx_ring));
+
+    config->socket = socket(AF_INET,SOCK_STREAM,IPPROTO_IP);
+    smb->port->debug(smb,0,"Socket created :%d",config->socket);
+
+//    /* Set send timeout of this fd as per config */
+//    config->tv.tv_sec = smb->write_timeout/1000;
+//    config->tv.tv_usec = (smb->write_timeout%1000)*1000;
+//    setsockopt(config->socket, SOL_SOCKET, SO_SNDTIMEO, (const char*)&(config->tv), sizeof(config->tv));
+//
+//    /* Set recv timeout of this fd as per config */
+//    config->tv.tv_sec = smb->read_timeout/1000;
+//    config->tv.tv_usec = (smb->read_timeout%1000)*1000;
+//    setsockopt(config->socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&(config->tv), sizeof(config->tv));
+
+    if(config->isSlave)
+    {
+         config->socket_addr.sin_family = AF_INET;
+         config->socket_addr.sin_port = htons(config->port);
+         config->socket_addr.sin_addr.s_addr = htonl(IPADDR_ANY); //inet_addr(ip);
+
+         rc = bind(config->socket, (struct sockaddr *)&(config->socket_addr), sizeof(config->socket_addr));
+
+         smb->port->debug(smb,0,"Socket bind :%d\n",rc);
+
+         rc = listen(config->socket, 3);
+
+         smb->port->debug(smb,0,"Socket listen :%d\n",rc);
+    }else
+    {
+        config->socket_addr.sin_family = AF_INET;
+        config->socket_addr.sin_port = htons(config->port);
+        config->socket_addr.sin_addr.s_addr = inet_addr(config->ip);//htonl(IPADDR_BROADCAST);;
+
+        rc = connect(config->socket, (struct sockaddr *)&(config->socket_addr), sizeof(config->socket_addr));
+
+        smb->port->debug(smb,0,"Socket connect :%d\n",rc);
+    }
+    smb->port->debug(smb,0,"open tcp %s : %d\n",inet_ntoa(config->socket_addr.sin_addr.s_addr),ntohs(config->socket_addr.sin_port));
     return 0;
 }
 
 static int tcp_close(small_modbus_t *smb)
 {
+    int rc = 0;
     modbus_tcp_config_t *config = smb->port_data;
-//    smb->port->debug(smb,0,"close:%s\n",config->name);
+
+    rc = close(config->socket);
+    smb->port->debug(smb,0,"Socket close :%d\n",rc);
+
+    smb->port->debug(smb,0,"close tcp %s : %d\n",
+            inet_ntoa(config->socket_addr.sin_addr.s_addr),
+            ntohs(config->socket_addr.sin_port));
     return 0;
 }
 
@@ -28,6 +76,8 @@ static int tcp_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
 {
     int rc = 0;
     modbus_tcp_config_t *config = smb->port_data;
+
+    rc = recv(config->socket_fd, (char *)data, length, 0);
 
 //    rc = rt_ringbuffer_get(&(config->rx_ring), data, length);
 //    //rc = rt_device_read(ctx_config->serial,0,data,length);
@@ -46,7 +96,10 @@ static int tcp_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
 }
 static int tcp_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 {
+    int rc = 0;
     modbus_tcp_config_t *config = smb->port_data;
+
+    rc = send(config->socket_fd, data, length, 0);
 //    if(config->rts_set)
 //        config->rts_set(smb,1);
 //
@@ -69,7 +122,7 @@ static int tcp_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 //    }
 //
 //    return length;
-    return 0;
+    return length;
 }
 static int tcp_flush(small_modbus_t *smb)
 {
@@ -77,7 +130,7 @@ static int tcp_flush(small_modbus_t *smb)
 //    int rc = rt_ringbuffer_data_len(&(config->rx_ring));
 //    rt_ringbuffer_reset(&(config->rx_ring));
 //    return rc;
-    return 0;
+    return MODBUS_OK;
 }
 static int tcp_select(small_modbus_t *smb,int timeout_ms)
 {
@@ -95,7 +148,7 @@ static int tcp_select(small_modbus_t *smb,int timeout_ms)
 //    {
 //       return MODBUS_TIMEOUT;
 //    }
-    return 0;
+    return MODBUS_OK;
 }
 static int tcp_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 {
@@ -136,15 +189,47 @@ int modbus_tcp_init(small_modbus_t *smb,small_modbus_port_t *port,void *config)
     }
     return 0;
 }
-int modbus_tcp_listen(small_modbus_t *smb,uint16_t port)
+
+int modbus_tcp_config(small_modbus_t *smb,uint16_t isSlave,char *ip,uint16_t port)
 {
+    modbus_tcp_config_t *config = smb->port_data;
+
+    config->isSlave = isSlave;
+    config->port = port;
+
+    memset(config->ip,0,16);
+    memcpy(config->ip,ip, ((strlen(ip)<=16)?strlen(ip):16));
+
     return 0;
 }
-int modbus_tcp_accept(small_modbus_t *smb,int socket_fd)
+
+int modbus_tcp_accept(small_modbus_t *smb)
 {
-    return 0;
+    int rc;
+    modbus_tcp_config_t *config = smb->port_data;
+
+    struct sockaddr client_addr;
+    socklen_t sin_size = sizeof(struct sockaddr);
+
+    rc = accept(config->socket,&client_addr, &sin_size);
+
+    return rc;
 }
+
+int modbus_tcp_select(small_modbus_t *smb,int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
+{
+    int rc;
+    //modbus_tcp_config_t *config = smb->port_data;
+
+    rc = select(nfds, readfds, writefds, exceptfds, timeout);
+
+    return rc;
+}
+
+
 int modbus_tcp_set_socket(small_modbus_t *smb,int socket_fd)
 {
+    modbus_tcp_config_t *config = smb->port_data;
+    config->socket_fd = socket_fd;
     return 0;
 }

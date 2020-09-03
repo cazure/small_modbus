@@ -168,15 +168,15 @@ static int rtu_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
     //rc = rt_device_read(ctx_config->serial,0,data,length);
 
     //if(smb->debug_level == 0)
-    {
-        int i;
-        rt_kprintf("read %d,%d :",rc,length);
-        for (i = 0; i < rc; i++)
-        {
-                rt_kprintf("<%02X>", data[i]);
-        }
-        rt_kprintf("\n");
-    }
+//    {
+//        int i;
+//        rt_kprintf("read %d,%d :",rc,length);
+//        for (i = 0; i < rc; i++)
+//        {
+//                rt_kprintf("<%02X>", data[i]);
+//        }
+//        rt_kprintf("\n");
+//    }
     return rc;
 }
 static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
@@ -194,15 +194,15 @@ static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 
     rt_thread_mdelay(smb->write_timeout);
     //if(smb->debug_level == 0)
-    {
-        int i;
-        rt_kprintf("write %d :",length);
-        for (i = 0; i < length; i++)
-        {
-                rt_kprintf("<%02X>", data[i]);
-        }
-        rt_kprintf("\n");
-    }
+//    {
+//        int i;
+//        rt_kprintf("write %d :",length);
+//        for (i = 0; i < length; i++)
+//        {
+//                rt_kprintf("<%02X>", data[i]);
+//        }
+//        rt_kprintf("\n");
+//    }
 
     return length;
 }

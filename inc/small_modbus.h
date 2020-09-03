@@ -12,6 +12,7 @@
 
 #include "stdint.h"
 #include "stdio.h"
+#include "string.h"
 
 /* function codes */
 enum functionCode {
@@ -30,7 +31,7 @@ enum functionCode {
 };
 
 /* Protocol exceptions */
-enum {
+enum exceptionsCode{
     MODBUS_EXCEPTION_ILLEGAL_FUNCTION = 0x01,
     MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS,
     MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE,
@@ -43,6 +44,20 @@ enum {
     MODBUS_EXCEPTION_GATEWAY_PATH,
     MODBUS_EXCEPTION_GATEWAY_TARGET,
     MODBUS_EXCEPTION_MAX
+};
+
+enum returnCode
+{
+    MODBUS_EXCEPTION = -0x80,
+    MODBUS_ERROR_READ = 0x00,
+    MODBUS_FAIL_CHECK = -7,
+    MODBUS_FAIL_ADRR = -6,
+    MODBUS_FAIL_POLL = -5,
+    MODBUS_FAIL_CONFIRM = -4,
+    MODBUS_FAIL_REQUEST = -3,
+    MODBUS_TIMEOUT  = -2,
+    MODBUS_FAIL     = -1,
+    MODBUS_OK = 0
 };
 
 #define MODBUS_BROADCAST_ADDRESS    0
@@ -91,8 +106,8 @@ typedef struct _small_modbus_core   small_modbus_core_t;
 typedef struct _small_modbus_port   small_modbus_port_t;
 typedef struct _small_modbus_mapping   small_modbus_mapping_t;
 
-
-struct _small_modbus_core{
+struct _small_modbus_core
+{
     uint16_t type;
     uint16_t len_header;
     uint16_t len_checksum;
@@ -102,19 +117,10 @@ struct _small_modbus_core{
     int (*check_send_pre)(small_modbus_t *smb,uint8_t *buff,int length);
     int (*check_wait_poll)(small_modbus_t *smb,uint8_t *buff,int length);
     int (*check_wait_confirm)(small_modbus_t *smb,uint8_t *buff,int length);
-//    unsigned int backend_type;
-//    unsigned int header_length;
-//    unsigned int checksum_length;
-//    unsigned int max_adu_length;
-//    int (*build_request_basis) (modbus_t *ctx, int function,int regaddr, int nb,uint8_t *req);
-//    int (*build_response_basis) (sft_t *sft, uint8_t *rsp);
-//    int (*prepare_response_tid) (const uint8_t *req, int *req_length);
-//    int (*send_msg_pre) (uint8_t *req, int req_length);
-//    int (*check_integrity)(modbus_t *ctx, uint8_t *msg,const int msg_length);
-//    int (*pre_check_confirmation)(modbus_t *ctx, const uint8_t *req,const uint8_t *rsp, int rsp_length);
 };
 
-struct _small_modbus_port {
+struct _small_modbus_port
+{
     int (*open) (small_modbus_t *smb);
     int (*close)(small_modbus_t *smb);
     int (*read) (small_modbus_t *smb,uint8_t *data,uint16_t length);
@@ -124,12 +130,28 @@ struct _small_modbus_port {
     int (*debug)(small_modbus_t *smb,int level,const char *fmt, ...);
 };
 
-struct _small_modbus_mapping {
+struct _small_modbus_mapping
+{
     int (*status_callback) (small_modbus_mapping_t *mapping,int read_write,int data_type,int start,int num);
     struct bit{int start;int num;uint8_t *array;}bit;
     struct input_bit{int start;int num;uint8_t *array;}input_bit;
     struct registers{int start;int num;uint16_t *array;}registers;
     struct input_registers{int start;int num;uint16_t *array;}input_registers;
+};
+
+struct _small_modbus
+{
+    int         status;
+    int         read_timeout;
+    int         write_timeout;
+    uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];
+    uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];
+    uint8_t     slave_addr;
+    uint8_t     debug_level;
+
+    small_modbus_core_t *core;
+    small_modbus_port_t *port;
+    void *port_data;
 };
 
 #define modbus_mapping_init(map,callback,\
@@ -166,29 +188,6 @@ reg_start,reg_num,input_reg_start,input_reg_num) \
         input_reg_start,    input_reg_num,      _##map##_input_reg_array\
     );\
 }
-
-struct _small_modbus{
-    int         status;
-    int         read_timeout;
-    int         write_timeout;
-    uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];
-    uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];
-    uint8_t     slave_addr;
-    uint8_t     debug_level;
-    uint16_t    tid;
-
-    small_modbus_core_t *core;
-    small_modbus_port_t *port;
-    small_modbus_mapping_t *mapping;
-    void *port_data;
-};
-
-enum returnCode {
-    MODBUS_DIS = -3,
-    MODBUS_TIMEOUT = -2,
-    MODBUS_FAIL = -1,
-    MODBUS_OK = 0
-};
 
 #define modbus_debug(smb,level,...)     if(smb->port->debug)smb->port->debug(smb,level,__VA_ARGS__)
 int _modbus_write(small_modbus_t *smb,uint8_t *data,uint16_t length);

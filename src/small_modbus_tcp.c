@@ -9,16 +9,28 @@
  */
 #include "small_modbus_tcp.h"
 
+typedef struct
+{
+    uint16_t    transfer_id;
+    uint16_t    protocol_id;
+    int32_t     socket_fd;
+} _modbus_tcp_port_data_t;
+
+
 /* Builds a TCP request header */
 int _tcp_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
 {
-    smb->tid++;
-    buff[0] = smb->tid >> 8;
-    buff[1] = smb->tid & 0x00ff;
+    _modbus_tcp_port_data_t *config = smb->port_data;
+
+    config->transfer_id++;
+    buff[0] = config->transfer_id >> 8;
+    buff[1] = config->transfer_id & 0x00ff;
 
     /* Protocol Modbus */
-    buff[2] = 0;
-    buff[3] = 0;
+//    buff[2] = config->protocol_id >> 8;
+//    buff[3] = config->protocol_id & 0x00ff;
+    buff[2] = 0x00;
+    buff[3] = 0x00;
 
     /* Length will be defined later by set_req_length_tcp at offsets 4
        and 5 */
@@ -36,16 +48,19 @@ int _tcp_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fu
 /* Builds a TCP response header */
 int _tcp_build_response_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun)
 {
+    _modbus_tcp_port_data_t *config = smb->port_data;
     /* Extract from MODBUS Messaging on TCP/IP Implementation
        Guide V1.0b (page 23/46):
        The transaction identifier is used to associate the future
        response with the request. */
-    buff[0] = smb->tid >> 8;
-    buff[1] = smb->tid & 0x00ff;
+    buff[0] = config->transfer_id >> 8;
+    buff[1] = config->transfer_id & 0x00ff;
 
     /* Protocol Modbus */
-    buff[2] = 0;
-    buff[3] = 0;
+//    buff[2] = config->protocol_id >> 8;
+//    buff[3] = config->protocol_id & 0x00ff;
+    buff[2] = 0x00;
+    buff[3] = 0x00;
 
     /* Length will be set later by send_msg (4 and 5) */
 
@@ -69,22 +84,53 @@ int _tcp_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 
 int _tcp_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 {
-    int check_len = (buff[4]<<8)|(buff[5]);
-    if( (check_len+6) == length)
+    _modbus_tcp_port_data_t *config = smb->port_data;
+    int check_len = (buff[4]<<8)+(buff[5]);
+    int addr = buff[6];
+    if((buff[2]==0x00)&&(buff[3]==0x00))// check Protocol ID
     {
-        return length;
+        if(((length - check_len)==6)) // check data length
+        {
+            if((addr == smb->slave_addr)||(addr == MODBUS_BROADCAST_ADDRESS))  //check addr
+            {
+                config->transfer_id = (buff[0]<<8)+(buff[1]);  //save transfer_id
+                return length;
+            }else
+            {
+                smb->port->debug(smb,0,"slave adrr: 0x%0X != 0x%0X\n", addr,smb->slave_addr);
+                return MODBUS_FAIL_ADRR;
+            }
+        }
     }
-    return 0;
+    smb->port->debug(smb,0,"not is modbus tcp data\n");
+    return MODBUS_FAIL_CHECK;
 }
 
 int _tcp_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
 {
-    int check_len = (buff[4]<<8)|(buff[5]);
-    if( (check_len+6) == length)
+    _modbus_tcp_port_data_t *config = smb->port_data;
+    int check_len = (buff[4]<<8)+(buff[5]);
+    int addr = buff[6];
+    uint16_t transfer_id = (buff[0]<<8)+(buff[1]);   //transfer_id
+    if(transfer_id == config->transfer_id)
     {
-        return length;
+        if((buff[2]==0x00)&&(buff[3]==0x00))// check Protocol ID
+        {
+            if(((length - check_len)==6)) // check data length
+            {
+                if((addr == smb->slave_addr)||(addr == MODBUS_BROADCAST_ADDRESS))  //check addr
+                {
+                    return length;
+                }else
+                {
+                    smb->port->debug(smb,0,"slave adrr: 0x%0X != 0x%0X\n", addr,smb->slave_addr);
+                    return MODBUS_FAIL_ADRR;
+                }
+            }
+        }
     }
-    return 0;
+    smb->port->debug(smb,0,"not is modbus tcp data\n");
+    return MODBUS_FAIL_CHECK;
 }
 
 const small_modbus_core_t _modbus_tcp_core =

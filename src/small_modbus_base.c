@@ -196,13 +196,13 @@ int modbus_error_recovery(small_modbus_t *smb)
 int modbus_set_read_timeout(small_modbus_t *smb,int timeout_ms)
 {
     smb->read_timeout = timeout_ms;
-    return MODBUS_FAIL;
+    return MODBUS_OK;
 }
 
 int modbus_set_write_timeout(small_modbus_t *smb,int timeout_ms)
 {
     smb->write_timeout = timeout_ms;
-    return MODBUS_FAIL;
+    return MODBUS_OK;
 }
 
 
@@ -216,7 +216,7 @@ int modbus_set_slave(small_modbus_t *smb, int slave)
             return MODBUS_OK;
         }
     }
-    return MODBUS_FAIL;
+    return MODBUS_OK;
 }
 
 int modbus_set_debug(small_modbus_t *smb, int level)
@@ -225,7 +225,7 @@ int modbus_set_debug(small_modbus_t *smb, int level)
     {
        smb->debug_level = level;
     }
-    return MODBUS_FAIL;
+    return MODBUS_OK;
 }
 
 
@@ -235,7 +235,6 @@ int modbus_start_request(small_modbus_t *smb,uint8_t *request,int function,int a
     int len = 0;
     int slave_addr = smb->slave_addr;
     uint16_t temp = 0;
-    uint16_t data_num = 0;
     uint16_t data_len = 0;
 
     len = smb->core->build_request_header(smb,request,slave_addr,function,addr,num);
@@ -268,7 +267,7 @@ int modbus_start_request(small_modbus_t *smb,uint8_t *request,int function,int a
          _modbus_write(smb,request, len);
          return len;
     }
-    return MODBUS_FAIL;
+    return MODBUS_FAIL_REQUEST;
 }
 /* wait for confirmation message */
 int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
@@ -373,8 +372,8 @@ int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_
         {
             smb->port->debug(smb,0,"function code %d\n",request_function);
         }
-        smb->port->debug(smb,0,"exception code %d\n",response_function);
-        return MODBUS_FAIL;
+        smb->port->debug(smb,0,"exception code %d\n",-response_function);
+        return -response_function;
     }
     if(request_function == response_function)
     {
@@ -471,7 +470,7 @@ int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_
             }
         }
     }
-    return MODBUS_FAIL;
+    return MODBUS_FAIL_CONFIRM;
 }
 
 /* wait for master to query data */
@@ -561,8 +560,6 @@ int modbus_wait_poll(small_modbus_t *smb,uint8_t *request)
     }
     return smb->core->check_wait_poll(smb,request,read_length);
 }
-
-
 
 /* handle query data */
 int modbus_handle_poll(small_modbus_t *smb,uint8_t *request,uint16_t request_len,small_modbus_mapping_t * mapping_tab)
@@ -784,7 +781,7 @@ int modbus_handle_poll(small_modbus_t *smb,uint8_t *request,uint16_t request_len
              return response_len;
         }
     }
-    return MODBUS_FAIL;
+    return MODBUS_FAIL_POLL;
 }
 
 int modbus_wait(small_modbus_t *smb,small_modbus_mapping_t * mapping_tab)
@@ -813,8 +810,9 @@ int modbus_read_bits(small_modbus_t *smb, int addr, int num,uint8_t *read_data)
         {
             return modbus_handle_confirm(smb, request,request_len, response,response_len, read_data);
         }
+        return response_len;
     }
-    return MODBUS_FAIL;
+    return request_len;
 }
 int modbus_read_input_bits(small_modbus_t *smb, int addr, int num,uint8_t *read_data)
 {
@@ -831,8 +829,9 @@ int modbus_read_input_bits(small_modbus_t *smb, int addr, int num,uint8_t *read_
         {
             return modbus_handle_confirm(smb, request,request_len, response,response_len, read_data);
         }
+        return response_len;
     }
-    return MODBUS_FAIL;
+    return request_len;
 }
 int modbus_read_registers(small_modbus_t *smb, int addr, int num,uint16_t *read_data)
 {
@@ -849,8 +848,9 @@ int modbus_read_registers(small_modbus_t *smb, int addr, int num,uint16_t *read_
         {
             return modbus_handle_confirm(smb, request,request_len, response,response_len, read_data);
         }
+        return response_len;
     }
-    return MODBUS_FAIL;
+    return request_len;
 }
 int modbus_read_input_registers(small_modbus_t *smb, int addr, int num,uint16_t *read_data)
 {
@@ -867,8 +867,9 @@ int modbus_read_input_registers(small_modbus_t *smb, int addr, int num,uint16_t 
         {
             return modbus_handle_confirm(smb, request,request_len, response,response_len, read_data);
         }
+        return response_len;
     }
-    return MODBUS_FAIL;
+    return request_len;
 }
 
 /* write */
@@ -888,8 +889,9 @@ int modbus_write_bit(small_modbus_t *smb, int addr,int write_status)
         {
             return modbus_handle_confirm(smb, request,request_len, response,response_len, NULL);
         }
+        return response_len;
     }
-    return MODBUS_FAIL;
+    return request_len;
 }
 int modbus_write_register(small_modbus_t *smb, int addr,int write_value)
 {
@@ -907,8 +909,9 @@ int modbus_write_register(small_modbus_t *smb, int addr,int write_value)
         {
             return modbus_handle_confirm(smb, request,request_len, response,response_len, NULL);
         }
+        return response_len;
     }
-    return MODBUS_FAIL;
+    return request_len;
 }
 int modbus_write_bits(small_modbus_t *smb, int addr, int num,uint8_t *write_data)
 {
@@ -925,8 +928,9 @@ int modbus_write_bits(small_modbus_t *smb, int addr, int num,uint8_t *write_data
         {
             return modbus_handle_confirm(smb, request,request_len, response,response_len, NULL);
         }
+        return response_len;
     }
-    return MODBUS_FAIL;
+    return request_len;
 }
 int modbus_write_registers(small_modbus_t *smb, int addr, int num,uint16_t *write_data)
 {
@@ -943,8 +947,9 @@ int modbus_write_registers(small_modbus_t *smb, int addr, int num,uint16_t *writ
         {
             return modbus_handle_confirm(smb, request,request_len, response,response_len, NULL);
         }
+        return response_len;
     }
-    return MODBUS_FAIL;
+    return request_len;
 }
 
 

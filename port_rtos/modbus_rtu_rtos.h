@@ -4,18 +4,6 @@
 #include <rtthread.h>
 #include <rtdevice.h>
 
-//typedef struct _rtt_uart
-//{
-//    char name[8];
-//    struct rt_device *dev;
-//    struct serial_configure config;
-//    struct rt_semaphore rx_sem;
-//    struct rt_ringbuffer rx_ring;
-//} rtt_uart_t;
-//
-//extern rtt_uart_t rtt_uart3;
-//extern rtt_uart_t rtt_uart6;
-
 typedef struct _modbus_rtu_config
 {
     char name[8];

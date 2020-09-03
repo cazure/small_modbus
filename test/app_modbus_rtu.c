@@ -26,17 +26,7 @@ void modbus_rtu_slave_thread(void *param)
     int rc = 0;
     static uint8_t receive_buf[128];
 
-   // modbus_mapping_new(modbus_mapping,modbus_rtu_status_callback,0,64,0,64,0,64,0,64);
-    controller_t * con = &controller;
-
-    modbus_mapping_init(modbus_mapping,modbus_rtu_status_callback,
-            con->io.DO.start,con->io.DO.num,con->io.DO.array,
-            con->io.DI.start,con->io.DI.num,con->io.DI.array,
-            con->io.AO.start,con->io.AO.num,con->io.AO.array,
-            con->io.AI.start,con->io.AI.num,con->io.AI.array);
-
-
-    modbus_rtu_init(&modbus_slave,NULL,&uart3_config);
+    modbus_rtu_init(&modbus_slave,NULL,&uart6_config);
     modbus_set_slave(&modbus_slave,8);
     modbus_connect(&modbus_slave);
     while (1)
@@ -64,38 +54,43 @@ small_modbus_t modbus_master = {0};
 
 void modbus_rtu_master_thread(void *param)
 {
-    uint16_t tab_reg[64] = {0};
-    modbus_rtu_init(&modbus_master,NULL,&uart6_config);
-    modbus_set_slave(&modbus_master,9);
+    int rc =0 ,num = 0;
+
+    modbus_rtu_init(&modbus_master,NULL,&uart3_config);
+    modbus_set_slave(&modbus_master,1);
     modbus_connect(&modbus_master);
-    int regs =0 ,num = 0;
     while (1)
     {
-        memset(tab_reg, 0, 64 * 2);
-        modbus_set_slave(&modbus_master,6);
-        regs = modbus_read_registers(&modbus_master, 3, 0x02, tab_reg);
-        if(regs>0)
-        {
-            MODBUS_PRINTF("[%4d][read num = %d]\n", num, regs);
-            int i;
-            for (i = 0; i < 10; i++)
-            {
-              MODBUS_PRINTF("<%#x>", tab_reg[i]);
-            }
-            MODBUS_PRINTF("\n");
+        modbus_error_recovery(&modbus_master);
+        modbus_set_slave(&modbus_master, 1);
+        rc = modbus_read_bits(&modbus_master, 0 , 16, modbus_mapping.bit.array);
+        rt_kprintf("master1:%d\n",rc);
 
-            delay_ms(50);
-            num++;
-            MODBUS_PRINTF("\n[2]------ write register [0x08]:%d -------\n",num);
-            modbus_write_register(&modbus_master,0x08,num);
+        modbus_error_recovery(&modbus_master);
+        modbus_set_slave(&modbus_master, 1);
+        rc = modbus_write_bits(&modbus_master, 0 , 16, modbus_mapping.bit.array);
+        rt_kprintf("master2:%d\n",rc);
 
-        }else
-        {
-            MODBUS_PRINTF("\n[2]------ receive failed -------\n");
-            delay_ms(10);
-            modbus_error_recovery(&modbus_master);
-        }
-        delay_ms(6000);
+        modbus_error_recovery(&modbus_master);
+        modbus_set_slave(&modbus_master, 1);
+        rc = modbus_read_input_bits(&modbus_master, 0, 16, modbus_mapping.input_bit.array);
+        rt_kprintf("master3:%d\n",rc);
+
+        modbus_error_recovery(&modbus_master);
+        modbus_set_slave(&modbus_master, 1);
+        rc = modbus_read_registers(&modbus_master, 0, 16, modbus_mapping.registers.array);
+        rt_kprintf("master4:%d\n",rc);
+
+        modbus_error_recovery(&modbus_master);
+        modbus_set_slave(&modbus_master, 1);
+        rc = modbus_write_registers(&modbus_master, 0, 16, modbus_mapping.registers.array);
+        rt_kprintf("master5:%d\n",rc);
+
+        modbus_error_recovery(&modbus_master);
+        modbus_set_slave(&modbus_master, 1);
+        rc = modbus_read_input_registers(&modbus_master, 0, 16, modbus_mapping.input_registers.array);
+        rt_kprintf("master6:%d\n",rc);
+        delay_ms(3000);
     }
     modbus_disconnect(&modbus_master);
 }
@@ -107,14 +102,23 @@ int modbus_rtu_test(void)
     uint8_t type = 0;
     LOG_I("init %d",type);
 
+    // modbus_mapping_new(modbus_mapping,modbus_rtu_status_callback,0,64,0,64,0,64,0,64);
+
+     controller_t * con = &controller;
+     modbus_mapping_init(modbus_mapping,modbus_rtu_status_callback,
+             con->io.DO.start,con->io.DO.num,con->io.DO.array,
+             con->io.DI.start,con->io.DI.num,con->io.DI.array,
+             con->io.AO.start,con->io.AO.num,con->io.AO.array,
+             con->io.AI.start,con->io.AI.num,con->io.AI.array);
+
 
     tid3 = rt_thread_create("modbus S",modbus_rtu_slave_thread, RT_NULL,2048,20, 10);
     if (tid3 != RT_NULL)
         rt_thread_startup(tid3);
 
-//    tid6 = rt_thread_create("modbus M",modbus_rtu_master_thread, RT_NULL,2048,20, 10);
-//    if (tid6 != RT_NULL)
-//        rt_thread_startup(tid6);
+    tid6 = rt_thread_create("modbus M",modbus_rtu_master_thread, RT_NULL,2048,20, 10);
+    if (tid6 != RT_NULL)
+        rt_thread_startup(tid6);
     return 0;
 }
 MSH_CMD_EXPORT(modbus_rtu_test,modbus rtu test)

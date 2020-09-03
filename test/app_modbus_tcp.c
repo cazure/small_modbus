@@ -75,12 +75,12 @@ static void modbus_tcp_slave_thread(void *param)
     select_timeout.tv_usec = 0;
 
     modbus_tcp_init(&modbus_tcp_slave,NULL,&modbus_config);
-
+    modbus_tcp_config(&modbus_tcp_slave, 1,"0.0.0.0", 502);
+    modbus_set_slave(&modbus_tcp_slave, 1);
 _mbtcp_start:
-    server_fd = modbus_tcp_listen(&modbus_tcp_slave, 502);
-    if (server_fd < 0)
-        goto _mbtcp_restart;
+    modbus_connect(&modbus_tcp_slave);
 
+    server_fd = modbus_config.socket;
     while (1)
     {
         max_fd = -1;
@@ -100,7 +100,7 @@ _mbtcp_start:
             }
         }
 
-        rc = select(max_fd + 1, &readset, RT_NULL, RT_NULL, &select_timeout);
+        rc = modbus_tcp_select(&modbus_tcp_slave,max_fd + 1, &readset, RT_NULL, RT_NULL, &select_timeout);
         if(rc < 0)
         {
             goto _mbtcp_restart;
@@ -109,7 +109,7 @@ _mbtcp_start:
         {
             if(FD_ISSET(server_fd, &readset))
             {
-                int client_sock_fd = modbus_tcp_accept(&modbus_tcp_slave,server_fd);
+                int client_sock_fd = modbus_tcp_accept(&modbus_tcp_slave);
                 if(client_sock_fd >= 0)
                 {
                     int index = -1;
@@ -140,7 +140,17 @@ _mbtcp_start:
                     if(FD_ISSET(client_session[i].fd, &readset))
                     {
                         modbus_tcp_set_socket(&modbus_tcp_slave, client_session[i].fd);
-                        modbus_wait(&modbus_tcp_slave, &modbus_tcp_mapping);
+                        rc = modbus_wait(&modbus_tcp_slave, &modbus_tcp_mapping);
+                        if(rc < 0)
+                        {
+                            rt_kprintf("modbus_wait:%d\n",rc);
+                            close(client_session[i].fd);
+                            client_session[i].fd = -1;
+                        }
+                        else
+                        {
+                            client_session[i].tick_timeout = rt_tick_get() + rt_tick_from_millisecond(CLIENT_TIMEOUT * 1000);
+                        }
                     }
                 }
             }
@@ -162,11 +172,7 @@ _mbtcp_start:
     }
 
 _mbtcp_restart:
-    if(server_fd >= 0)
-    {
-        close(server_fd);
-        server_fd = -1;
-    }
+    modbus_disconnect(&modbus_tcp_slave);
 
     for(int i =0;i<MAX_CLIENT_NUM;i++)
     {
@@ -176,9 +182,9 @@ _mbtcp_restart:
             client_session[i].fd = -1;
         }
     }
-
     rt_thread_mdelay(5000);
     goto _mbtcp_start;
+
 
 }
 

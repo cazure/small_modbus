@@ -13,28 +13,35 @@
 #include "small_modbus_tcp.h"
 #include <rtthread.h>
 #include <rtdevice.h>
+#include <dfs_posix.h>
+
+#ifdef RT_USING_SAL
+#include <sys/socket.h>
+#else
+#include <lwip/sockets.h>
+#endif
 
 typedef struct _modbus_tcp_config
 {
-    int      server_socket;
-    uint16_t server_port;
+    uint16_t    transfer_id;
+    uint16_t    protocol_id;
+    int32_t     socket_fd;
 
-    int         fd;
-    uint16_t    tid;
-    char name[8];
-    uint8_t _read_buff[256];
-    uint8_t _rx_buff[256];
-    struct rt_device *dev;
-    struct serial_configure config;
-    struct rt_semaphore rx_sem;
-    struct rt_ringbuffer rx_ring;
-    int (*rts_set)(small_modbus_t *ctx, int on);
+    char         ip[16];
+    uint16_t     port;
+    uint16_t     isSlave;
+    int          socket;
+    struct  timeval     tv;
+    struct sockaddr_in  socket_addr;
 } modbus_tcp_config_t;
 
 
 int modbus_tcp_init(small_modbus_t *smb,small_modbus_port_t *port,void *config);
-int modbus_tcp_listen(small_modbus_t *smb,uint16_t port);
-int modbus_tcp_accept(small_modbus_t *smb,int socket_fd);
+int modbus_tcp_config(small_modbus_t *smb,uint16_t isSlave,char *ip,uint16_t port);
+
+//slave server
+int modbus_tcp_accept(small_modbus_t *smb);
+int modbus_tcp_select(small_modbus_t *smb,int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 int modbus_tcp_set_socket(small_modbus_t *smb,int socket_fd);
 
 
