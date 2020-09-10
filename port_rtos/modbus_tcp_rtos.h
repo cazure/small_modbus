@@ -14,6 +14,7 @@
 #include <rtthread.h>
 #include <rtdevice.h>
 #include <dfs_posix.h>
+#include "sys/time.h"
 
 #ifdef RT_USING_SAL
 #include <sys/socket.h>
