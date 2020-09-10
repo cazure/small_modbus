@@ -56,14 +56,15 @@ static void modbus_tcp_slave_thread(void *param)
     struct timeval select_timeout;
 
     rt_thread_mdelay(3000);
-    controller_t * con = &controller;
 
     //modbus_mapping_new(modbus_mapping,modbus_status_callback,0,64,0,64,0,64,0,64);
+    //controller_t * con = &controller;
+    IO_mapping_t *iotable = &(controller.io_table);
     modbus_mapping_init(modbus_tcp_mapping,modbus_tcp_status_callback,
-            con->io.DO.start,con->io.DO.num,con->io.DO.array,
-            con->io.DI.start,con->io.DI.num,con->io.DI.array,
-            con->io.AO.start,con->io.AO.num,con->io.AO.array,
-            con->io.AI.start,con->io.AI.num,con->io.AI.array);
+             iotable->DO.start,iotable->DO.num,iotable->DO.array,
+             iotable->DI.start,iotable->DI.num,iotable->DI.array,
+             iotable->AO.start,iotable->AO.num,iotable->AO.array,
+             iotable->AI.start,iotable->AI.num,iotable->AI.array);
 
     for (int i = 0; i < MAX_CLIENT_NUM; i++)
     {

@@ -104,12 +104,13 @@ int modbus_rtu_test(void)
 
     // modbus_mapping_new(modbus_mapping,modbus_rtu_status_callback,0,64,0,64,0,64,0,64);
 
-     controller_t * con = &controller;
-     modbus_mapping_init(modbus_mapping,modbus_rtu_status_callback,
-             con->io.DO.start,con->io.DO.num,con->io.DO.array,
-             con->io.DI.start,con->io.DI.num,con->io.DI.array,
-             con->io.AO.start,con->io.AO.num,con->io.AO.array,
-             con->io.AI.start,con->io.AI.num,con->io.AI.array);
+    //controller_t * con = &controller;
+    IO_mapping_t *iotable = &(controller.io_table);
+    modbus_mapping_init(modbus_mapping,modbus_rtu_status_callback,
+             iotable->DO.start,iotable->DO.num,iotable->DO.array,
+             iotable->DI.start,iotable->DI.num,iotable->DI.array,
+             iotable->AO.start,iotable->AO.num,iotable->AO.array,
+             iotable->AI.start,iotable->AI.num,iotable->AI.array);
 
 
     tid3 = rt_thread_create("modbus S",modbus_rtu_slave_thread, RT_NULL,2048,20, 10);
