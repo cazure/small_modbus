@@ -416,7 +416,7 @@ int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_
                     // 计算读取线圈数量
                     data_num = (request[smb->core->len_header+3]<<8)|(request[smb->core->len_header+4]);
                     // 计算字节数
-                    temp = (2 + (data_num / 8) + ((data_num % 8) ? 1 : 0));
+                    temp = ((data_num / 8) + ((data_num % 8) ? 1 : 0));
                     // 计算实际字节数
                     byte_num = (response[smb->core->len_header+1]);
                     if((uint8_t)temp == byte_num)
@@ -790,7 +790,10 @@ int modbus_wait(small_modbus_t *smb,small_modbus_mapping_t * mapping_tab)
     uint8_t *confirm = smb->write_buff;
     uint8_t *request = smb->read_buff;
     rc = modbus_wait_poll(smb,request);
-    rc = modbus_handle_poll(smb,request,rc,mapping_tab);
+		if(rc > 0)
+		{
+				rc = modbus_handle_poll(smb,request,rc,mapping_tab);
+		}
     return rc;
 }
 
