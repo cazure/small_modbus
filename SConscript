@@ -1,15 +1,18 @@
 Import('RTT_ROOT')
 from building import *
 
-# get current directory
 cwd = GetCurrentDir()
 
-# The set of source files associated with this SConscript file.
 src = Glob('src/*.c')
-src += Glob('port_rtos/*.c')
 
-if GetDepend(['PKG_USING_SMALL_MODBUS_TEST']):
-    src += Glob('test/*.c')
+if GetDepend(['PKG_SMALL_MODBUS_RTOS']):
+    src += Glob('port_rtos/*.c')
+
+if GetDepend(['PKG_USING_SMALL_MODBUS_RTU_TEST']):
+    src += Glob('test/modbus_rtu_test.c')
+    
+if GetDepend(['PKG_USING_SMALL_MODBUS_TCP_TEST']):
+    src += Glob('test/modbus_tcp_test.c')
     
 path = [cwd + '/inc']
 path += [cwd + '/port_rtos']
