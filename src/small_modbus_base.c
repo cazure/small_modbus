@@ -453,12 +453,10 @@ int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_
                 {
                     return MODBUS_OK;
                 }
-                break;
             case MODBUS_FC_MASK_WRITE_REGISTER:
                 {
                     return MODBUS_OK;
                 }
-                break;
             default:
                 {
                     return MODBUS_OK;

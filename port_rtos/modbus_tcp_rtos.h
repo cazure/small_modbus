@@ -14,6 +14,8 @@
 #include <rtthread.h>
 #include <rtdevice.h>
 #include <dfs_posix.h>
+#include <dfs_poll.h>
+#include <dfs_select.h>
 #include "sys/time.h"
 
 #ifdef RT_USING_SAL
