@@ -13,7 +13,7 @@
 
 static small_modbus_mapping_t modbus_mapping = {0};
 static small_modbus_t modbus_slave = {0};
-#define MODBUS_PRINTF(...)   modbus_debug((&modbus_slave),2,__VA_ARGS__)
+#define MODBUS_PRINTF(...)   modbus_debug((&modbus_slave),__VA_ARGS__)
 
 static int modbus_rtu_status_callback(small_modbus_mapping_t *mapping,int read_write,int data_type,int start,int num)
 {
@@ -50,7 +50,7 @@ void modbus_rtu_slave_thread(void *param)
 
 small_modbus_t modbus_master = {0};
 #undef MODBUS_PRINTF
-#define MODBUS_PRINTF(...)   modbus_debug((&modbus_master),2,__VA_ARGS__)
+#define MODBUS_PRINTF(...)   modbus_debug((&modbus_master),__VA_ARGS__)
 
 void modbus_rtu_master_thread(void *param)
 {

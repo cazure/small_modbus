@@ -39,7 +39,7 @@ static client_session_t client_session[MAX_CLIENT_NUM];
 static small_modbus_mapping_t modbus_tcp_mapping = {0};
 static small_modbus_t modbus_tcp_slave = {0};
 static modbus_tcp_config_t modbus_config = {0};
-#define MODBUS_PRINTF(...)   modbus_debug((&modbus_tcp_slave),2,__VA_ARGS__)
+#define MODBUS_PRINTF(...)   modbus_debug((&modbus_tcp_slave),__VA_ARGS__)
 
 static int modbus_tcp_status_callback(small_modbus_mapping_t *mapping,int read_write,int data_type,int start,int num)
 {
