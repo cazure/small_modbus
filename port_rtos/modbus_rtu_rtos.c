@@ -6,7 +6,7 @@
 #include "modbus_rtu_rtos.h"
 #include "string.h"
 
-#include "controller.h"
+#include "hw_api.h"
 
 int _modbus1_rts(small_modbus_t *ctx, int on)
 {
@@ -142,16 +142,16 @@ static int rtu_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
     rc = rt_ringbuffer_get(&(config->rx_ring), data, length);
     //rc = rt_device_read(ctx_config->serial,0,data,length);
 
-    //if(smb->debug_level == 0)
-//    {
-//        int i;
-//        rt_kprintf("read %d,%d :",rc,length);
-//        for (i = 0; i < rc; i++)
-//        {
-//                rt_kprintf("<%02X>", data[i]);
-//        }
-//        rt_kprintf("\n");
-//    }
+    if(smb->debug_level == 2)
+    {
+        int i;
+        rt_kprintf("read %d,%d :",rc,length);
+        for (i = 0; i < rc; i++)
+        {
+                rt_kprintf("<%02X>", data[i]);
+        }
+        rt_kprintf("\n");
+    }
     return rc;
 }
 static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
@@ -165,17 +165,16 @@ static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
     if(config->rts_set)
         config->rts_set(smb,0);
 
-    rt_thread_mdelay(smb->write_timeout);
-//    if(smb->debug_level == 0)
-//    {
-//        int i;
-//        rt_kprintf("write %d :",length);
-//        for (i = 0; i < length; i++)
-//        {
-//                rt_kprintf("<%02X>", data[i]);
-//        }
-//        rt_kprintf("\n");
-//    }
+    if(smb->debug_level == 2)
+    {
+        int i;
+        rt_kprintf("write %d :",length);
+        for (i = 0; i < length; i++)
+        {
+                rt_kprintf("<%02X>", data[i]);
+        }
+        rt_kprintf("\n");
+    }
 
     return length;
 }
@@ -190,11 +189,14 @@ static int rtu_flush(small_modbus_t *smb)
     rt_sem_control(&(config->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
     if(rc)
     {
-        rt_kprintf("flush: %d\n",rc);
+        if(smb->debug_level == 2)
+        {
+            rt_kprintf("flush: %d\n",rc);
+        }
     }
     return rc;
 }
-static int rtu_select(small_modbus_t *smb,int timeout_ms)
+static int rtu_wait(small_modbus_t *smb,int timeout_ms)
 {
     modbus_rtu_config_t *config = smb->port_data;
 
@@ -236,7 +238,7 @@ small_modbus_port_t _modbus_rtu_rtos_port =
     .read =  rtu_read,
     .write = rtu_write,
     .flush =  rtu_flush,
-    .select = rtu_select,
+    .wait =   rtu_wait,
     .debug =  rtu_debug
 };
 int modbus_rtu_init(small_modbus_t *smb,small_modbus_port_t *port,void *config)
@@ -268,17 +270,5 @@ int modbus_rtu_init(small_modbus_t *smb,small_modbus_port_t *port,void *config)
 //    return 0;
 //}
 
-//int debug_modbus(int argc, char**argv)
-//{
-//    if(argc<2)
-//    {
-//        rt_kprintf("debug_modbus [0-2]\n");
-//    }else
-//    {
-//        now_level  = atoi(argv[1])%3;
-//    }
-//    return RT_EOK;
-//}
-//MSH_CMD_EXPORT(debug_modbus,debug_modbus [0-5])
 
 

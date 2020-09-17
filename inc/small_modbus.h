@@ -126,7 +126,7 @@ struct _small_modbus_port
     int (*read) (small_modbus_t *smb,uint8_t *data,uint16_t length);
     int (*write)(small_modbus_t *smb,uint8_t *data,uint16_t length);
     int (*flush)(small_modbus_t *smb);
-    int (*select)(small_modbus_t *smb,int timeout);
+    int (*wait)(small_modbus_t *smb,int timeout);
     int (*debug)(small_modbus_t *smb,int level,const char *fmt, ...);
 };
 
@@ -189,7 +189,10 @@ reg_start,reg_num,input_reg_start,input_reg_num) \
     );\
 }
 
-#define modbus_debug(smb,level,...)     if(smb->port->debug)smb->port->debug(smb,level,__VA_ARGS__)
+#define modbus_debug(smb,...)           if(smb->port->debug)smb->port->debug(smb,0,__VA_ARGS__)
+#define modbus_debug_error(smb,...)     if(smb->port->debug)smb->port->debug(smb,1,__VA_ARGS__)
+#define modbus_debug_info(smb,...)      if(smb->port->debug)smb->port->debug(smb,2,__VA_ARGS__)
+
 int _modbus_write(small_modbus_t *smb,uint8_t *data,uint16_t length);
 int _modbus_read(small_modbus_t *smb,uint8_t *data,uint16_t length);
 int _modbus_open(small_modbus_t *smb);

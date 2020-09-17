@@ -203,4 +203,23 @@ int modbus_tcp_test(void)
         rt_thread_startup(tid);
     return RT_EOK;
 }
-MSH_CMD_EXPORT(modbus_tcp_test,modbus tcp test)
+
+#if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
+#include <finsh.h>
+int modbus_tcp_debug(int argc, char**argv)
+{
+    int now_level = 0;
+    if(argc<2)
+    {
+        rt_kprintf("modbus_tcp_debug [0-2]\n0.disable 1.error  2.info\n");
+    }else
+    {
+        now_level  = atoi(argv[1])%3;
+        rt_kprintf("modbus_tcp_debug %d\n",now_level);
+        modbus_set_debug(&modbus_tcp_slave,now_level);
+    }
+    return RT_EOK;
+}
+MSH_CMD_EXPORT(modbus_tcp_debug,modbus_tcp_debug [0-2]);
+MSH_CMD_EXPORT(modbus_tcp_test,modbus tcp test);
+#endif

@@ -19,7 +19,7 @@ static int tcp_open(small_modbus_t *smb)
     modbus_tcp_config_t *config = smb->port_data;
 
     config->socket = socket(AF_INET,SOCK_STREAM,IPPROTO_IP);
-    smb->port->debug(smb,0,"Socket created :%d",config->socket);
+    smb->port->debug(smb,0,"socket created :%d",config->socket);
 
 //    /* Set send timeout of this fd as per config */
 //    config->tv.tv_sec = smb->write_timeout/1000;
@@ -39,11 +39,11 @@ static int tcp_open(small_modbus_t *smb)
 
          rc = bind(config->socket, (struct sockaddr *)&(config->socket_addr), sizeof(config->socket_addr));
 
-         smb->port->debug(smb,0,"Socket bind :%d\n",rc);
+         smb->port->debug(smb,0,"socket bind :%d\n",rc);
 
          rc = listen(config->socket, 3);
 
-         smb->port->debug(smb,0,"Socket listen :%d\n",rc);
+         smb->port->debug(smb,0,"socket listen :%d\n",rc);
     }else
     {
         config->socket_addr.sin_family = AF_INET;
@@ -52,7 +52,7 @@ static int tcp_open(small_modbus_t *smb)
 
         rc = connect(config->socket, (struct sockaddr *)&(config->socket_addr), sizeof(config->socket_addr));
 
-        smb->port->debug(smb,0,"Socket connect :%d\n",rc);
+        smb->port->debug(smb,0,"socket connect :%d\n",rc);
     }
     smb->port->debug(smb,0,"open tcp %s : %d\n",inet_ntoa(config->socket_addr.sin_addr.s_addr),ntohs(config->socket_addr.sin_port));
     return 0;
@@ -64,7 +64,7 @@ static int tcp_close(small_modbus_t *smb)
     modbus_tcp_config_t *config = smb->port_data;
 
     rc = close(config->socket);
-    smb->port->debug(smb,0,"Socket close :%d\n",rc);
+    smb->port->debug(smb,0,"socket close :%d\n",rc);
 
     smb->port->debug(smb,0,"close tcp %s : %d\n",
             inet_ntoa(config->socket_addr.sin_addr.s_addr),
@@ -82,24 +82,24 @@ static int tcp_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
 //    rc = rt_ringbuffer_get(&(config->rx_ring), data, length);
 //    //rc = rt_device_read(ctx_config->serial,0,data,length);
 //
-//    //if(smb->debug_level == 0)
-//    {
-//        int i;
-//        rt_kprintf("read %d,%d :",rc,length);
-//        for (i = 0; i < rc; i++)
-//        {
-//                rt_kprintf("<%02X>", data[i]);
-//        }
-//        rt_kprintf("\n");
-//    }
+    if(smb->debug_level == 2)
+    {
+        int i;
+        rt_kprintf("read %d,%d :",rc,length);
+        for (i = 0; i < rc; i++)
+        {
+                rt_kprintf("<%02X>", data[i]);
+        }
+        rt_kprintf("\n");
+    }
     return rc;
 }
 static int tcp_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 {
-    int rc = 0;
+//    int rc = 0;
     modbus_tcp_config_t *config = smb->port_data;
 
-    rc = send(config->socket_fd, data, length, 0);
+    send(config->socket_fd, data, length, 0);
 //    if(config->rts_set)
 //        config->rts_set(smb,1);
 //
@@ -110,18 +110,16 @@ static int tcp_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 //    if(config->rts_set)
 //        config->rts_set(smb,0);
 //
-//   // if(smb->debug_level == 0)
-//    {
-//        int i;
-//        rt_kprintf("write %d :",length);
-//        for (i = 0; i < length; i++)
-//        {
-//                rt_kprintf("<%02X>", data[i]);
-//        }
-//        rt_kprintf("\n");
-//    }
-//
-//    return length;
+    if(smb->debug_level == 2)
+    {
+        int i;
+        rt_kprintf("write %d :",length);
+        for (i = 0; i < length; i++)
+        {
+                rt_kprintf("<%02X>", data[i]);
+        }
+        rt_kprintf("\n");
+    }
     return length;
 }
 static int tcp_flush(small_modbus_t *smb)
@@ -132,7 +130,7 @@ static int tcp_flush(small_modbus_t *smb)
 //    return rc;
     return MODBUS_OK;
 }
-static int tcp_select(small_modbus_t *smb,int timeout_ms)
+static int tcp_wait(small_modbus_t *smb,int timeout_ms)
 {
     modbus_tcp_config_t *config = smb->port_data;
 //    int rc = rt_ringbuffer_data_len(&(config->rx_ring));
@@ -172,7 +170,7 @@ small_modbus_port_t _modbus_tcp_rtos_port =
     .read =  tcp_read,
     .write = tcp_write,
     .flush = tcp_flush,
-    .select = tcp_select,
+    .wait =   tcp_wait,
     .debug =  tcp_debug
 };
 
