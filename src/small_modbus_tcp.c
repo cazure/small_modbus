@@ -97,12 +97,12 @@ int _tcp_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
                 return length;
             }else
             {
-                smb->port->debug(smb,0,"slave adrr: 0x%0X != 0x%0X\n", addr,smb->slave_addr);
+                modbus_debug_error(smb,"slave adrr: 0x%0X != 0x%0X\n", addr,smb->slave_addr);
                 return MODBUS_FAIL_ADRR;
             }
         }
     }
-    smb->port->debug(smb,0,"not is modbus tcp data\n");
+    modbus_debug_error(smb,"not is modbus tcp data\n");
     return MODBUS_FAIL_CHECK;
 }
 
@@ -123,13 +123,13 @@ int _tcp_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
                     return length;
                 }else
                 {
-                    smb->port->debug(smb,0,"slave adrr: 0x%0X != 0x%0X\n", addr,smb->slave_addr);
+                    modbus_debug_error(smb,"slave adrr: 0x%0X != 0x%0X\n", addr,smb->slave_addr);
                     return MODBUS_FAIL_ADRR;
                 }
             }
         }
     }
-    smb->port->debug(smb,0,"not is modbus tcp data\n");
+    modbus_debug_error(smb,"not is modbus tcp data\n");
     return MODBUS_FAIL_CHECK;
 }
 

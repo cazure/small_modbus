@@ -49,7 +49,7 @@ enum exceptionsCode{
 enum returnCode
 {
     MODBUS_EXCEPTION = -0x80,
-    MODBUS_ERROR_READ = 0x00,
+    MODBUS_ERROR_READ = -8,
     MODBUS_FAIL_CHECK = -7,
     MODBUS_FAIL_ADRR = -6,
     MODBUS_FAIL_POLL = -5,

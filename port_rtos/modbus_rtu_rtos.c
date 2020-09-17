@@ -165,6 +165,7 @@ static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
     if(config->rts_set)
         config->rts_set(smb,0);
 
+		rt_thread_mdelay(smb->write_timeout);
     if(smb->debug_level == 2)
     {
         int i;
