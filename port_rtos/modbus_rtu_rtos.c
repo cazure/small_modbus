@@ -36,15 +36,13 @@ modbus_rtu_config_t uart6_config =
 /* 接收数据回调函数 */
 static rt_err_t uart3_indicate(rt_device_t dev, rt_size_t size)
 {
-//    if(size)
-//        rt_sem_release(&(uart3_config.rx_sem));
     if (size > 0)
     {
         int rc = rt_device_read(dev,0,uart3_config._read_buff,256);
         if(rc>0)
         {
             int len = rt_ringbuffer_data_len(&(uart3_config.rx_ring));
-            if((len == 0)&&(uart3_config._read_buff[0] == 0x00))
+            if((len == 0)&&(uart3_config._read_buff[0] == 0x00)) //uart framing error 0x00
             {
                 rt_ringbuffer_put(&(uart3_config.rx_ring), uart3_config._read_buff+1, rc-1);
             }else
@@ -58,15 +56,13 @@ static rt_err_t uart3_indicate(rt_device_t dev, rt_size_t size)
 }
 static rt_err_t uart6_indicate(rt_device_t dev, rt_size_t size)
 {
-//    if(size)
-//        rt_sem_release(&(uart6_config.rx_sem));
     if (size > 0)
     {
         int rc = rt_device_read(dev,0,uart6_config._read_buff,256);
         if(rc>0)
         {
             int len = rt_ringbuffer_data_len(&(uart6_config.rx_ring));
-            if((len == 0)&&(uart6_config._read_buff[0] == 0x00))
+            if((len == 0)&&(uart6_config._read_buff[0] == 0x00)) //uart framing error 0x00
             {
                 rt_ringbuffer_put(&(uart6_config.rx_ring), uart6_config._read_buff+1, rc-1);
             }else
@@ -87,19 +83,16 @@ int hw_uart_init(void)
         rt_sem_init(&(uart3_config.rx_sem), "uart3", 0, RT_IPC_FLAG_FIFO);
         rt_ringbuffer_init(&(uart3_config.rx_ring), uart3_config._rx_buff, 256);
 
-        uart3_config.config.baud_rate = BAUD_RATE_9600;        //修改波特率为 9600
-        uart3_config.config.data_bits = DATA_BITS_8;           //数据位 8
-        uart3_config.config.stop_bits = STOP_BITS_1;           //停止位 1
-        uart3_config.config.bufsz     = 256;                   //修改缓冲区 buff size 为 128
-        uart3_config.config.parity    = PARITY_NONE;           //无奇偶校验位
+        uart3_config.config.baud_rate = BAUD_RATE_9600;
+        uart3_config.config.data_bits = DATA_BITS_8;
+        uart3_config.config.stop_bits = STOP_BITS_1;
+        uart3_config.config.bufsz     = 256;
+        uart3_config.config.parity    = PARITY_NONE;
 
         rt_device_control(uart3_config.dev, RT_DEVICE_CTRL_CONFIG, &(uart3_config.config));
 
-        /* 以中断接收及轮询发送模式打开串口设备 */
         //rt_device_open(uart3_config.dev, RT_DEVICE_FLAG_RDWR|RT_DEVICE_FLAG_DMA_RX);
         rt_device_open(uart3_config.dev, RT_DEVICE_FLAG_DMA_RX);
-
-        /* 设置接收回调函数 */
         rt_device_set_rx_indicate(uart3_config.dev, uart3_indicate);
     }
 
@@ -109,38 +102,20 @@ int hw_uart_init(void)
         rt_sem_init(&(uart6_config.rx_sem), "uart6", 0, RT_IPC_FLAG_FIFO);
         rt_ringbuffer_init(&(uart6_config.rx_ring), uart6_config._rx_buff, 256);
 
-        uart6_config.config.baud_rate = BAUD_RATE_9600;        //修改波特率为 9600
-        uart6_config.config.data_bits = DATA_BITS_8;           //数据位 8
-        uart6_config.config.stop_bits = STOP_BITS_1;           //停止位 1
-        uart6_config.config.bufsz     = 256;                   //修改缓冲区 buff size 为 128
-        uart6_config.config.parity    = PARITY_NONE;           //无奇偶校验位
+        uart6_config.config.baud_rate = BAUD_RATE_9600;
+        uart6_config.config.data_bits = DATA_BITS_8;
+        uart6_config.config.stop_bits = STOP_BITS_1;
+        uart6_config.config.bufsz     = 256;
+        uart6_config.config.parity    = PARITY_NONE;
 
         rt_device_control(uart6_config.dev, RT_DEVICE_CTRL_CONFIG, &(uart6_config.config));
 
-        /* 以中断接收及轮询发送模式打开串口设备 */
         //rt_device_open(uart6_config.dev, RT_DEVICE_FLAG_RDWR|RT_DEVICE_FLAG_DMA_RX);
         rt_device_open(uart6_config.dev, RT_DEVICE_FLAG_DMA_RX);
-        /* 设置接收回调函数 */
         rt_device_set_rx_indicate(uart6_config.dev, uart6_indicate);
     }
     return 0;
 }
-
-//static rt_err_t uart_rx_ind(rt_device_t dev, rt_size_t size)
-//{
-//    modbus_rtu_config_t *config = dev->user_data;
-//    static uint8_t buff[128];
-//    if (size > 0)
-//    {
-//        int rc = rt_device_read(config->serial,0,buff,128);
-//        if(rc>0)
-//        {
-//            rt_ringbuffer_put(&(config->rx_ring), buff, rc);
-//            rt_sem_release(&(config->rx_sem));
-//        }
-//    }
-//    return RT_EOK;
-//}
 
 static int rtu_open(small_modbus_t *smb)
 {
@@ -185,15 +160,13 @@ static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
     if(config->rts_set)
         config->rts_set(smb,1);
 
-    //write(ctx->fd, data, length);
-
     rt_device_write(config->dev, 0, data, length);
 
     if(config->rts_set)
         config->rts_set(smb,0);
 
     rt_thread_mdelay(smb->write_timeout);
-    //if(smb->debug_level == 0)
+//    if(smb->debug_level == 0)
 //    {
 //        int i;
 //        rt_kprintf("write %d :",length);
