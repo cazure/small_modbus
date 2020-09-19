@@ -142,6 +142,7 @@ struct _small_modbus_mapping
 struct _small_modbus
 {
     int         status;
+    int         error_code;
     int         read_timeout;
     int         write_timeout;
     uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];
@@ -204,6 +205,7 @@ int _modbus_init(small_modbus_t *smb);
 int modbus_connect(small_modbus_t *smb);
 int modbus_disconnect(small_modbus_t *smb);
 int modbus_error_recovery(small_modbus_t *smb);
+int modbus_error_exit(small_modbus_t *smb,int code);
 
 //int modbus_set_read_buff(small_modbus_t *smb,int byte,uint8_t *buff);
 //int modbus_set_write_buff(small_modbus_t *smb,int byte,uint8_t *buff);

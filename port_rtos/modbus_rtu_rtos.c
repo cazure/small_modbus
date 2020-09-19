@@ -164,8 +164,8 @@ static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 
     if(config->rts_set)
         config->rts_set(smb,0);
-
-		rt_thread_mdelay(smb->write_timeout);
+		
+		rt_thread_mdelay(10);
     if(smb->debug_level == 2)
     {
         int i;
@@ -176,15 +176,20 @@ static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
         }
         rt_kprintf("\n");
     }
-
     return length;
 }
 static int rtu_flush(small_modbus_t *smb)
 {
     modbus_rtu_config_t *config = smb->port_data;
-
-    rt_thread_mdelay(smb->write_timeout);
-
+		if(smb->error_code >= 0)
+		{
+			rt_thread_mdelay(smb->write_timeout);
+		}else
+		if(smb->error_code != MODBUS_TIMEOUT)
+		{
+			rt_thread_mdelay(smb->write_timeout*2);
+		}
+		smb->error_code = 0;
     int rc = rt_ringbuffer_data_len(&(config->rx_ring));
     rt_ringbuffer_reset(&(config->rx_ring));
     rt_sem_control(&(config->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
@@ -220,12 +225,12 @@ static int rtu_wait(small_modbus_t *smb,int timeout_ms)
 static int rtu_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 {
     //modbus_rtu_config_t *config = smb->port_data;
-    static char log_buf[32];
+    static char log_buf[64];
     if(level <= smb->debug_level)
     {
         va_list args;
         va_start(args, fmt);
-        rt_vsnprintf(log_buf, 32, fmt, args);
+        rt_vsnprintf(log_buf,64, fmt, args);
         va_end(args);
         rt_kprintf(log_buf);
     }
