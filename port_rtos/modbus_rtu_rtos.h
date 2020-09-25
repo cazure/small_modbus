@@ -13,6 +13,7 @@ typedef struct _modbus_rtu_config
     struct serial_configure config;
     struct rt_semaphore rx_sem;
     struct rt_ringbuffer rx_ring;
+    struct rt_mutex 	lock;
     int (*rts_set)(small_modbus_t *ctx, int on);
 } modbus_rtu_config_t;
 
@@ -21,6 +22,8 @@ extern modbus_rtu_config_t uart6_config;
 
 int modbus_rtu_init(small_modbus_t *smb,small_modbus_port_t *port,void *config);
 
+int modbus_rtu_lock(small_modbus_t *smb);
+int modbus_rtu_unlock(small_modbus_t *smb);
 
 //int modbus_rtu_config(small_modbus_t *smb,char *device_name,rtt_uart_t *uart);
 //int modbus_rtu_set_rts_ops(small_modbus_t *smb,int (*rts_set)(small_modbus_t *ctx, int on));

@@ -81,6 +81,7 @@ int hw_uart_init(void)
     if(uart3_config.dev != NULL)
     {
         rt_sem_init(&(uart3_config.rx_sem), "uart3", 0, RT_IPC_FLAG_FIFO);
+				rt_mutex_init(&(uart3_config.lock),"uart3",RT_IPC_FLAG_FIFO);
         rt_ringbuffer_init(&(uart3_config.rx_ring), uart3_config._rx_buff, 256);
 
         uart3_config.config.baud_rate = BAUD_RATE_9600;
@@ -100,6 +101,7 @@ int hw_uart_init(void)
     if(uart6_config.dev != NULL)
     {
         rt_sem_init(&(uart6_config.rx_sem), "uart6", 0, RT_IPC_FLAG_FIFO);
+				rt_mutex_init(&(uart6_config.lock),"uart6",RT_IPC_FLAG_FIFO);
         rt_ringbuffer_init(&(uart6_config.rx_ring), uart6_config._rx_buff, 256);
 
         uart6_config.config.baud_rate = BAUD_RATE_9600;
@@ -157,6 +159,8 @@ static int rtu_read(small_modbus_t *smb,uint8_t *data, uint16_t length)
 static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 {
     modbus_rtu_config_t *config = smb->port_data;
+//		uint32_t tick_now,tick_diff;
+//		tick_now = rt_tick_get();
     if(config->rts_set)
         config->rts_set(smb,1);
 
@@ -165,6 +169,8 @@ static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
     if(config->rts_set)
         config->rts_set(smb,0);
 		
+//		tick_diff = rt_tick_get()-tick_now;
+//		rt_thread_mdelay(smb->write_timeout-tick_diff);
 		rt_thread_mdelay(10);
     if(smb->debug_level == 2)
     {
@@ -181,15 +187,21 @@ static int rtu_write(small_modbus_t *smb,uint8_t *data, uint16_t length)
 static int rtu_flush(small_modbus_t *smb)
 {
     modbus_rtu_config_t *config = smb->port_data;
-		if(smb->error_code >= 0)
-		{
-			rt_thread_mdelay(smb->write_timeout);
-		}else
+//		if(smb->error_code < 0)
+//		{
+//			if(smb->error_code != MODBUS_TIMEOUT)
+//			{
+//				rt_thread_mdelay(smb->write_timeout);
+//			}
+//			smb->error_code = 0;
+//		}else
+//		{
+//			rt_thread_mdelay(smb->write_timeout);
+//		}
 		if(smb->error_code != MODBUS_TIMEOUT)
 		{
-			rt_thread_mdelay(smb->write_timeout*2);
+			rt_thread_mdelay(smb->write_timeout);
 		}
-		smb->error_code = 0;
     int rc = rt_ringbuffer_data_len(&(config->rx_ring));
     rt_ringbuffer_reset(&(config->rx_ring));
     rt_sem_control(&(config->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
@@ -275,6 +287,18 @@ int modbus_rtu_init(small_modbus_t *smb,small_modbus_port_t *port,void *config)
 //    config->rts_set = rts_set;
 //    return 0;
 //}
+
+int modbus_rtu_lock(small_modbus_t *smb)
+{
+	modbus_rtu_config_t *config = smb->port_data;
+	return rt_mutex_take(&(config->lock), RT_WAITING_FOREVER);
+}
+
+int modbus_rtu_unlock(small_modbus_t *smb)
+{
+	modbus_rtu_config_t *config = smb->port_data;
+	return rt_mutex_release(&(config->lock));
+}
 
 
 
