@@ -73,9 +73,9 @@ int _modbus_init(small_modbus_t *smb)
     return MODBUS_FAIL;
 }
 
-int _modbus_array2bit(uint8_t *dest_modbus_bit,void *source,uint16_t bit_num)
+int _modbus_array2bit(uint8_t *dest_modbus_bit,void *source_u8array,uint16_t bit_num)
 {
-    uint8_t *source_array = source;
+    uint8_t *source_array = source_u8array;
     uint16_t index = 0;
     uint16_t byte_num =  (bit_num / 8) + ((bit_num % 8) ? 1 : 0);
     uint16_t byte_index = 0;
@@ -97,9 +97,9 @@ int _modbus_array2bit(uint8_t *dest_modbus_bit,void *source,uint16_t bit_num)
     return byte_num;
 }
 
-int _modbus_bit2array(void *dest,uint8_t *modbus_bit_array,uint16_t bit_num)
+int _modbus_bit2array(void *dest_u8array,uint8_t *source_modbus_bit,uint16_t bit_num)
 {
-    uint8_t *dest_byte = dest;
+    uint8_t *dest_byte = dest_u8array;
     uint16_t index = 0;
     uint16_t bit_index = 0;
     uint16_t byte_num =  bit_num;
@@ -110,7 +110,7 @@ int _modbus_bit2array(void *dest,uint8_t *modbus_bit_array,uint16_t bit_num)
         bit_index = (index / 8);
         offset = (index % 8);
         temp = (0x01 << offset)&0xff;
-        if(modbus_bit_array[bit_index] & temp)
+        if(source_modbus_bit[bit_index] & temp)
         {
             dest_byte[index] = 1;
         }else
@@ -121,28 +121,28 @@ int _modbus_bit2array(void *dest,uint8_t *modbus_bit_array,uint16_t bit_num)
     return byte_num;
 }
 
-int _modbus_array2reg(uint8_t *dest_reg,void *source_array,uint16_t reg_num)
+int _modbus_array2reg(uint8_t *dest_modbus_reg,void *source_u16array,uint16_t reg_num)
 {
-    uint16_t *source = source_array;  //u16
+    uint16_t *source = source_u16array;  //u16
     uint16_t index = 0;
     uint16_t byte_num =  reg_num*2;
 
     for(index=0; index < reg_num; index++)
     {
-        dest_reg[(index*2)] = (source[index] >> 8);
-        dest_reg[(index*2)+1] = (source[index] & 0x00FF);
+        dest_modbus_reg[(index*2)] = (source[index] >> 8);
+        dest_modbus_reg[(index*2)+1] = (source[index] & 0x00FF);
     }
     return byte_num;
 }
 
-int _modbus_reg2array(void *dest_array,uint8_t *source_reg,uint16_t reg_num)
+int _modbus_reg2array(void *dest_u16array,uint8_t *source_modbus_reg,uint16_t reg_num)
 {
-    uint16_t *dest = dest_array;  //u16
+    uint16_t *dest = dest_u16array;  //u16
     uint16_t index = 0;
 
     for(index=0; index < reg_num; index++)
     {
-        dest[index] = (source_reg[index*2]<<8)|(source_reg[index*2+1]);
+        dest[index] = (source_modbus_reg[index*2]<<8)|(source_modbus_reg[index*2+1]);
     }
     return reg_num;
 }
