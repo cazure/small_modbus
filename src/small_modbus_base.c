@@ -1,57 +1,18 @@
 /*
- * Copyright (c) 2006-2020, RT-Thread Development Team
- *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Change Logs:
  * Date           Author       Notes
- * 2020-08-21     Administrator       the first version
+ * 2020-08-21     chenbin      small modbus the first version
  */
 #include "small_modbus.h"
 
+int _modbus_write(small_modbus_t *smb,uint8_t *data,uint16_t length);
+int _modbus_read(small_modbus_t *smb,uint8_t *data,uint16_t length);
+int _modbus_open(small_modbus_t *smb);
+int _modbus_close(small_modbus_t *smb);
+int _modbus_flush(small_modbus_t *smb);
+int _modbus_wait(small_modbus_t *smb,int timeout);
+
 static const char _modbus_ver[32] = "small_modbus_v1.00";
-
-int _modbus_write(small_modbus_t *smb,uint8_t *data,uint16_t length)
-{
-    if(smb->port->write)
-        return smb->port->write(smb,data,length);
-    return MODBUS_FAIL;
-}
-
-int _modbus_read(small_modbus_t *smb,uint8_t *data,uint16_t length)
-{
-    if(smb->port->read)
-        return smb->port->read(smb,data,length);
-    return MODBUS_FAIL;
-}
-
-int _modbus_open(small_modbus_t *smb)
-{
-    if(smb->port->open)
-        return smb->port->open(smb);
-    return MODBUS_FAIL;
-}
-
-int _modbus_close(small_modbus_t *smb)
-{
-    if(smb->port->close)
-        return smb->port->close(smb);
-    return MODBUS_FAIL;
-}
-
-int _modbus_flush(small_modbus_t *smb)
-{
-    if(smb->port->flush)
-        return smb->port->flush(smb);
-    return MODBUS_FAIL;
-}
-
-int _modbus_wait(small_modbus_t *smb,int timeout)
-{
-    if(smb->port->wait)
-        return smb->port->wait(smb,timeout);
-    return MODBUS_FAIL;
-}
 
 int _modbus_init(small_modbus_t *smb)
 {
@@ -353,7 +314,7 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
                 read_want += smb->core->len_checksum;
                 if((read_want+read_length)> smb->core->len_adu_max )
                 {
-                    smb->port->debug(smb,1,"More than ADU %d > %d\n",(read_want+read_length),smb->core->len_adu_max);
+                    modbus_debug_error(smb,"More than ADU %d > %d\n",(read_want+read_length),smb->core->len_adu_max);
                     return MODBUS_FAIL;
                 }
                 read_position = 2;

@@ -1,16 +1,12 @@
 /*
- * Copyright (c) 2006-2020, RT-Thread Development Team
- *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Change Logs:
  * Date           Author       Notes
- * 2020-08-21     Administrator       the first version
+ * 2020-08-21     chenbin      small modbus the first version
  */
 #ifndef _SMALL_MODBUS_TCP_H_
 #define _SMALL_MODBUS_TCP_H_
 
-#include "small_modbus.h"
+#include "small_modbus_base.h"
 extern const small_modbus_core_t _modbus_tcp_core;
 
 #define _MODBUS_TCP_HEADER_LENGTH      7

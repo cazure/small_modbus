@@ -1,11 +1,7 @@
 /*
- * Copyright (c) 2006-2020, RT-Thread Development Team
- *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Change Logs:
  * Date           Author       Notes
- * 2020-08-21     Administrator       the first version
+ * 2020-08-21     chenbin      small modbus the first version
  */
 #include "small_modbus_rtu.h"
 
@@ -69,7 +65,7 @@ static const uint8_t table_crc_lo[] = {
     0x43, 0x83, 0x41, 0x81, 0x80, 0x40
 };
 
-static uint16_t crc16(uint8_t *buffer, uint16_t buffer_length)
+uint16_t crc16(uint8_t *buffer, uint16_t buffer_length)
 {
     uint8_t crc_hi = 0xFF; /* high CRC byte initialized */
     uint8_t crc_lo = 0xFF; /* low CRC byte initialized */

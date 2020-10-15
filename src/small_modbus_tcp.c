@@ -1,30 +1,16 @@
 /*
- * Copyright (c) 2006-2020, RT-Thread Development Team
- *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Change Logs:
  * Date           Author       Notes
- * 2020-08-21     Administrator       the first version
+ * 2020-08-21     chenbin      small modbus the first version
  */
 #include "small_modbus_tcp.h"
-
-typedef struct
-{
-    uint16_t    transfer_id;
-    uint16_t    protocol_id;
-    int32_t     socket_fd;
-} _modbus_tcp_port_data_t;
-
 
 /* Builds a TCP request header */
 int _tcp_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
 {
-    _modbus_tcp_port_data_t *config = smb->port_data;
-
-    config->transfer_id++;
-    buff[0] = config->transfer_id >> 8;
-    buff[1] = config->transfer_id & 0x00ff;
+    smb->transfer_id++;
+    buff[0] = smb->transfer_id >> 8;
+    buff[1] = smb->transfer_id & 0x00ff;
 
     /* Protocol Modbus */
 //    buff[2] = config->protocol_id >> 8;
@@ -48,13 +34,12 @@ int _tcp_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fu
 /* Builds a TCP response header */
 int _tcp_build_response_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun)
 {
-    _modbus_tcp_port_data_t *config = smb->port_data;
     /* Extract from MODBUS Messaging on TCP/IP Implementation
        Guide V1.0b (page 23/46):
        The transaction identifier is used to associate the future
        response with the request. */
-    buff[0] = config->transfer_id >> 8;
-    buff[1] = config->transfer_id & 0x00ff;
+    buff[0] = smb->transfer_id >> 8;
+    buff[1] = smb->transfer_id & 0x00ff;
 
     /* Protocol Modbus */
 //    buff[2] = config->protocol_id >> 8;
@@ -84,7 +69,6 @@ int _tcp_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 
 int _tcp_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 {
-    _modbus_tcp_port_data_t *config = smb->port_data;
     int check_len = (buff[4]<<8)+(buff[5]);
     int addr = buff[6];
     if((buff[2]==0x00)&&(buff[3]==0x00))// check Protocol ID
@@ -93,7 +77,7 @@ int _tcp_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
         {
             if((addr == smb->slave_addr)||(addr == MODBUS_BROADCAST_ADDRESS))  //check addr
             {
-                config->transfer_id = (buff[0]<<8)+(buff[1]);  //save transfer_id
+                smb->transfer_id = (buff[0]<<8)+(buff[1]);  //save transfer_id
                 return length;
             }else
             {
@@ -108,11 +92,10 @@ int _tcp_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 
 int _tcp_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
 {
-    _modbus_tcp_port_data_t *config = smb->port_data;
     int check_len = (buff[4]<<8)+(buff[5]);
     int addr = buff[6];
     uint16_t transfer_id = (buff[0]<<8)+(buff[1]);   //transfer_id
-    if(transfer_id == config->transfer_id)
+    if(transfer_id == smb->transfer_id)
     {
         if((buff[2]==0x00)&&(buff[3]==0x00))// check Protocol ID
         {

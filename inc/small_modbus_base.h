@@ -1,14 +1,10 @@
 /*
- * Copyright (c) 2006-2020, RT-Thread Development Team
- *
- * SPDX-License-Identifier: Apache-2.0
- *
  * Change Logs:
- * Date           Author       chenbin
- * 2020-08-21     Administrator       the first version
+ * Date           Author       Notes
+ * 2020-08-21     chenbin      small modbus the first version
  */
-#ifndef _SMALL_MODBUS_H_
-#define _SMALL_MODBUS_H_
+#ifndef _SMALL_MODBUS_BASE_H_
+#define _SMALL_MODBUS_BASE_H_
 
 #include "stdint.h"
 #include "stdio.h"
@@ -103,7 +99,7 @@ enum returnCode
 
 typedef struct _small_modbus        small_modbus_t;
 typedef struct _small_modbus_core   small_modbus_core_t;
-typedef struct _small_modbus_port   small_modbus_port_t;
+//typedef struct _small_modbus_port   small_modbus_port_t;
 typedef struct _small_modbus_mapping   small_modbus_mapping_t;
 
 struct _small_modbus_core
@@ -119,16 +115,16 @@ struct _small_modbus_core
     int (*check_wait_confirm)(small_modbus_t *smb,uint8_t *buff,int length);
 };
 
-struct _small_modbus_port
-{
-    int (*open) (small_modbus_t *smb);
-    int (*close)(small_modbus_t *smb);
-    int (*read) (small_modbus_t *smb,uint8_t *data,uint16_t length);
-    int (*write)(small_modbus_t *smb,uint8_t *data,uint16_t length);
-    int (*flush)(small_modbus_t *smb);
-    int (*wait)(small_modbus_t *smb,int timeout);
-    int (*debug)(small_modbus_t *smb,int level,const char *fmt, ...);
-};
+//struct _small_modbus_port
+//{
+//    int (*open) (small_modbus_t *smb);
+//    int (*close)(small_modbus_t *smb);
+//    int (*read) (small_modbus_t *smb,uint8_t *data,uint16_t length);
+//    int (*write)(small_modbus_t *smb,uint8_t *data,uint16_t length);
+//    int (*flush)(small_modbus_t *smb);
+//    int (*wait)(small_modbus_t *smb,int timeout);
+//    int (*debug)(small_modbus_t *smb,int level,const char *fmt, ...);
+//};
 
 struct _small_modbus_mapping
 {
@@ -139,21 +135,6 @@ struct _small_modbus_mapping
     struct input_registers{int start;int num;uint16_t *array;}input_registers;
 };
 
-struct _small_modbus
-{
-    int         status;
-    int         error_code;
-    int         read_timeout;
-    int         write_timeout;
-    uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];
-    uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];
-    uint8_t     slave_addr;
-    uint8_t     debug_level;
-
-    small_modbus_core_t *core;
-    small_modbus_port_t *port;
-    void *port_data;
-};
 
 #define modbus_mapping_init(map,callback,\
 bit_start,bit_num,bit_array,    input_bit_start,input_bit_num,input_bit_array,\
@@ -190,22 +171,42 @@ reg_start,reg_num,input_reg_start,input_reg_num) \
     );\
 }
 
-#define modbus_debug(smb,...)           if(smb->port->debug)smb->port->debug(smb,0,__VA_ARGS__)
-#define modbus_debug_error(smb,...)     if(smb->port->debug)smb->port->debug(smb,1,__VA_ARGS__)
-#define modbus_debug_info(smb,...)      if(smb->port->debug)smb->port->debug(smb,2,__VA_ARGS__)
 
-int _modbus_write(small_modbus_t *smb,uint8_t *data,uint16_t length);
-int _modbus_read(small_modbus_t *smb,uint8_t *data,uint16_t length);
-int _modbus_open(small_modbus_t *smb);
-int _modbus_close(small_modbus_t *smb);
-int _modbus_flush(small_modbus_t *smb);
-int _modbus_select(small_modbus_t *smb,int timeout);
+struct _small_modbus
+{
+	int         status;
+	int         error_code;
+	int         read_timeout;
+	int         write_timeout;
+	uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];
+	uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];
+	uint8_t     slave_addr;
+	uint8_t     debug_level;
+	uint16_t    transfer_id;
+	uint16_t    protocol_id;
+	int32_t     socket_fd;
+
+	small_modbus_core_t *core;
+	//small_modbus_port_t *port;
+	void *port;
+};
+
+int _modbus_array2bit(uint8_t *dest_modbus_bit,void *source_u8array,uint16_t bit_num);
+int _modbus_bit2array(void *dest_u8array,uint8_t *source_modbus_bit,uint16_t bit_num);
+int _modbus_array2reg(uint8_t *dest_modbus_reg,void *source_u16array,uint16_t reg_num);
+int _modbus_reg2array(void *dest_u16array,uint8_t *source_modbus_reg,uint16_t reg_num);
+
 int _modbus_init(small_modbus_t *smb);
+int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...);
 
 int modbus_connect(small_modbus_t *smb);
 int modbus_disconnect(small_modbus_t *smb);
 int modbus_error_recovery(small_modbus_t *smb);
 int modbus_error_exit(small_modbus_t *smb,int code);
+
+#define modbus_debug(smb,...)           _modbus_debug(smb,0,__VA_ARGS__)
+#define modbus_debug_error(smb,...)     _modbus_debug(smb,1,__VA_ARGS__)
+#define modbus_debug_info(smb,...)      _modbus_debug(smb,2,__VA_ARGS__)
 
 //int modbus_set_read_buff(small_modbus_t *smb,int byte,uint8_t *buff);
 //int modbus_set_write_buff(small_modbus_t *smb,int byte,uint8_t *buff);
@@ -244,4 +245,4 @@ int modbus_mask_write_register(small_modbus_t *smb, int addr, uint16_t and_mask,
 int modbus_write_and_read_registers(small_modbus_t *smb, int write_addr, int write_nb,uint16_t *src, int read_addr, int read_nb,uint16_t *dest);
 
 
-#endif /* _SMALL_MODBUS_H_ */
+#endif /* _SMALL_MODBUS_BASE_H_ */
