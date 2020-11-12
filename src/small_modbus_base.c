@@ -24,7 +24,7 @@ int _modbus_init(small_modbus_t *smb)
         }
         if(smb->write_timeout==0)
         {
-            smb->write_timeout = 20;
+            smb->write_timeout = 30;
         }
         if(smb->debug_level==0)
         {
