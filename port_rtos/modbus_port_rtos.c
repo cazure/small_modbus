@@ -46,12 +46,12 @@ int _modbus_wait(small_modbus_t *smb,int timeout)
 
 int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 {
-	static char log_buf[32];
-	if(level > smb->debug_level)
+	static char log_buf[256];
+	if(level <= smb->debug_level)
 	{
 		va_list args;
 		va_start(args, fmt);
-		rt_vsnprintf(log_buf, 32, fmt, args);
+		rt_vsnprintf(log_buf, 256, fmt, args);
 		va_end(args);
 		rt_kprintf(log_buf);
 	}
