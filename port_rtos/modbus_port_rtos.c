@@ -47,7 +47,7 @@ int _modbus_wait(small_modbus_t *smb,int timeout)
 int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 {
 	static char log_buf[32];
-	if(level <= smb->debug_level)
+	if(level > smb->debug_level)
 	{
 		va_list args;
 		va_start(args, fmt);

@@ -358,9 +358,9 @@ int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_
     {
         if((response_function - 0x80) == request_function)
         {
-            modbus_debug_error(smb,"function code %d\n",request_function);
+            modbus_debug_error(smb,"request function code %d\n",request_function);
         }
-        modbus_debug_error(smb,"exception code %d\n",-response_function);
+        modbus_debug_error(smb,"response exception code %d\n",-response_function);
         return -response_function;
     }
     if(request_function == response_function)
