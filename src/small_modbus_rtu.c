@@ -65,7 +65,7 @@ static const uint8_t table_crc_lo[] = {
     0x43, 0x83, 0x41, 0x81, 0x80, 0x40
 };
 
-uint16_t crc16(uint8_t *buffer, uint16_t buffer_length)
+uint16_t modbus_crc16(uint8_t *buffer, uint16_t buffer_length)
 {
     uint8_t crc_hi = 0xFF; /* high CRC byte initialized */
     uint8_t crc_lo = 0xFF; /* low CRC byte initialized */
@@ -102,7 +102,7 @@ int _rtu_build_response_header(small_modbus_t *smb,uint8_t *buff,int slave,int f
 
 int _rtu_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 {
-    uint16_t crc = crc16(buff,length);
+    uint16_t crc = modbus_crc16(buff,length);
     buff[length++] = crc >> 8;
     buff[length++] = crc & 0x00FF;
     return length;
@@ -111,7 +111,7 @@ int _rtu_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 int _rtu_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 {
     int addr = buff[0];
-    uint16_t crc_cal = crc16(buff, length - 2);
+    uint16_t crc_cal = modbus_crc16(buff, length - 2);
     uint16_t crc_recv = (buff[length - 2] << 8) | buff[length - 1];
     if (crc_cal != crc_recv)
     {
@@ -129,7 +129,7 @@ int _rtu_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
 int _rtu_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
 {
     int addr = buff[0];
-    uint16_t crc_cal = crc16(buff, length - 2);
+    uint16_t crc_cal = modbus_crc16(buff, length - 2);
     uint16_t crc_recv = (buff[length - 2] << 8) | buff[length - 1];
     if (crc_cal != crc_recv)
     {
