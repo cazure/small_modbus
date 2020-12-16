@@ -81,7 +81,7 @@ uint16_t modbus_crc16(uint8_t *buffer, uint16_t buffer_length)
 }
 
 /* Builds a RTU request header */
-int _rtu_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
+static int _rtu_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
 {
     buff[0] = slave;
     buff[1] = fun;
@@ -93,14 +93,14 @@ int _rtu_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fu
 }
 
 /* Builds a RTU response header */
-int _rtu_build_response_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun)
+static int _rtu_build_response_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun)
 {
     buff[0] = slave;
     buff[1] = fun;
     return _MODBUS_RTU_PRESET_RSP_LENGTH;
 }
 
-int _rtu_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
+static int _rtu_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 {
     uint16_t crc = modbus_crc16(buff,length);
     buff[length++] = crc >> 8;
@@ -108,7 +108,7 @@ int _rtu_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
     return length;
 }
 
-int _rtu_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
+static int _rtu_check_wait_request(small_modbus_t *smb,uint8_t *buff,int length)
 {
     int addr = buff[0];
     uint16_t crc_cal = modbus_crc16(buff, length - 2);
@@ -126,7 +126,7 @@ int _rtu_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
     return length;
 }
 
-int _rtu_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
+static int _rtu_check_wait_response(small_modbus_t *smb,uint8_t *buff,int length)
 {
     int addr = buff[0];
     uint16_t crc_cal = modbus_crc16(buff, length - 2);
@@ -153,7 +153,7 @@ const small_modbus_core_t _modbus_rtu_core =
     .build_request_header   = _rtu_build_request_header,
     .build_response_header  = _rtu_build_response_header,
     .check_send_pre     = _rtu_check_send_pre,
-    .check_wait_poll    = _rtu_check_wait_poll,
-    .check_wait_confirm   = _rtu_check_wait_confirm
+    .check_wait_request   = _rtu_check_wait_request,
+    .check_wait_response   = _rtu_check_wait_response
 };
 

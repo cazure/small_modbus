@@ -6,7 +6,7 @@
 #include "small_modbus_tcp.h"
 
 /* Builds a TCP request header */
-int _tcp_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
+static int _tcp_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
 {
     smb->transfer_id++;
     buff[0] = smb->transfer_id >> 8;
@@ -32,7 +32,7 @@ int _tcp_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fu
 }
 
 /* Builds a TCP response header */
-int _tcp_build_response_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun)
+static int _tcp_build_response_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun)
 {
     /* Extract from MODBUS Messaging on TCP/IP Implementation
        Guide V1.0b (page 23/46):
@@ -56,7 +56,7 @@ int _tcp_build_response_header(small_modbus_t *smb,uint8_t *buff,int slave,int f
     return _MODBUS_TCP_PRESET_RSP_LENGTH;
 }
 
-int _tcp_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
+static int _tcp_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 {
     /* Substract the header length to the message length */
     int rc = length - 6;
@@ -67,7 +67,7 @@ int _tcp_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
     return length;
 }
 
-int _tcp_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
+static int _tcp_check_wait_request(small_modbus_t *smb,uint8_t *buff,int length)
 {
     int check_len = (buff[4]<<8)+(buff[5]);
     int addr = buff[6];
@@ -90,7 +90,7 @@ int _tcp_check_wait_poll(small_modbus_t *smb,uint8_t *buff,int length)
     return MODBUS_FAIL_CHECK;
 }
 
-int _tcp_check_wait_confirm(small_modbus_t *smb,uint8_t *buff,int length)
+static int _tcp_check_wait_response(small_modbus_t *smb,uint8_t *buff,int length)
 {
     int check_len = (buff[4]<<8)+(buff[5]);
     int addr = buff[6];
@@ -125,8 +125,8 @@ const small_modbus_core_t _modbus_tcp_core =
     .build_request_header   = _tcp_build_request_header,
     .build_response_header  = _tcp_build_response_header,
     .check_send_pre     = _tcp_check_send_pre,
-    .check_wait_poll    = _tcp_check_wait_poll,
-    .check_wait_confirm   = _tcp_check_wait_confirm
+    .check_wait_request    = _tcp_check_wait_request,
+    .check_wait_response   = _tcp_check_wait_response
 };
 
 

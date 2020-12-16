@@ -273,20 +273,20 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
     while (read_want != 0)
     {
         rc = _modbus_wait(smb,wait_time);
-        if(rc < 0)
+        if(rc <= 0)
         {
-            modbus_debug_error(smb,"[%d]select(%d) \n",rc,wait_time);
-            return rc;
+            modbus_debug_error(smb,"[%d]wait(%d) error\n",rc,wait_time);
+            return MODBUS_ERROR_WAIT;
         }
         rc = _modbus_read(smb,response + read_length , read_want);
         if(rc <= 0)
         {
-            modbus_debug_error(smb,"[%d]read(%d) \n",rc,read_want);
-            return rc;
+            modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
+            return MODBUS_ERROR_READ;
         }
         if(rc != read_want)
         {
-            modbus_debug_info(smb,"[%d]read less(%d) \n",rc,read_want);
+            modbus_debug_info(smb,"[%d]read(%d) less\n",rc,read_want);
         }
 
         read_length += rc;  //sum byte length
@@ -343,7 +343,7 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
             }
         }
     }
-    return smb->core->check_wait_confirm(smb,response,read_length);
+    return smb->core->check_wait_response(smb,response,read_length);
 }
 /* master handle confirmation message */
 int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_len,uint8_t *response,uint16_t response_len,void *read_data)
@@ -718,7 +718,7 @@ int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime)
             }
         }
     }
-    return smb->core->check_wait_poll(smb,request,read_length);
+    return smb->core->check_wait_request(smb,request,read_length);
 }
 
 /* slave handle query data for callback */

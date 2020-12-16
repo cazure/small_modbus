@@ -45,6 +45,7 @@ enum returnCode
     MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS = -0x82,
     MODBUS_EXCEPTION_ILLEGAL_FUNCTION = -0x81,
     MODBUS_EXCEPTION = -0x80,
+    MODBUS_ERROR_WAIT = -9,
     MODBUS_ERROR_READ = -8,
     MODBUS_FAIL_CHECK = -7,
     MODBUS_FAIL_ADRR = -6,
@@ -118,8 +119,8 @@ struct _small_modbus_core
     int (*build_request_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num);
     int (*build_response_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun);
     int (*check_send_pre)(small_modbus_t *smb,uint8_t *buff,int length);
-    int (*check_wait_poll)(small_modbus_t *smb,uint8_t *buff,int length);
-    int (*check_wait_confirm)(small_modbus_t *smb,uint8_t *buff,int length);
+    int (*check_wait_request)(small_modbus_t *smb,uint8_t *buff,int length);
+    int (*check_wait_response)(small_modbus_t *smb,uint8_t *buff,int length);
 };
 
 struct _small_modbus
