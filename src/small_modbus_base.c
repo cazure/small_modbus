@@ -768,7 +768,7 @@ int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_le
 				response_len = smb->core->build_response_header(smb,response,query_slave,query_function); //准备应答数据头,计算数据长度
 				
 				if(slave_callback)
-					response_exception = slave_callback(smb,query_function,query_address,query_num,(response+response_len)); //回调
+					response_exception = slave_callback(smb,query_function,query_address,query_num,&(request[smb->core->len_header + 3])); //回调
 				
 				if(response_exception >= 0)
 				{
@@ -782,12 +782,12 @@ int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_le
 			case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
 			{
 				query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];
-				query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];  //请求 值
+				query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];  //请求 数量
 				
 				response_len = smb->core->build_response_header(smb,response,query_slave,query_function); //准备应答数据头,计算数据长度
 				
 				if(slave_callback)
-					response_exception = slave_callback(smb,query_function,query_address,query_num,&(response[smb->core->len_header + 5])); //回调
+					response_exception = slave_callback(smb,query_function,query_address,query_num,&(request[smb->core->len_header + 5])); //回调
 				
 				if(response_exception >= 0)
 				{
