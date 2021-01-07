@@ -53,7 +53,7 @@ int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 		va_start(args, fmt);
 		rt_vsnprintf(log_buf, 256, fmt, args);
 		va_end(args);
-		rt_kprintf(log_buf);
+		rt_kputs(log_buf);
 	}
 	return 0;
 }
