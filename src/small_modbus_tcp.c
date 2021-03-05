@@ -118,7 +118,7 @@ static int _tcp_check_wait_response(small_modbus_t *smb,uint8_t *buff,int length
 
 const small_modbus_core_t _modbus_tcp_core =
 {
-    .type           = 1,
+    .type           = MODBUS_CORE_TCP,
     .len_header     = _MODBUS_TCP_HEADER_LENGTH,
     .len_checksum   = _MODBUS_TCP_CHECKSUM_LENGTH,
     .len_adu_max    = _MODBUS_TCP_MAX_ADU_LENGTH,

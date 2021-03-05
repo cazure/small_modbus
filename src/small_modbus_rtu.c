@@ -146,7 +146,7 @@ static int _rtu_check_wait_response(small_modbus_t *smb,uint8_t *buff,int length
 
 const small_modbus_core_t _modbus_rtu_core =
 {
-    .type           = 0,
+    .type           = MODBUS_CORE_RTU,
     .len_header     = _MODBUS_RTU_HEADER_LENGTH,
     .len_checksum   = _MODBUS_RTU_CHECKSUM_LENGTH,
     .len_adu_max    = _MODBUS_RTU_MAX_ADU_LENGTH,

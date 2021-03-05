@@ -5,13 +5,12 @@
  */
 #include "small_modbus.h"
 
-int _modbus_write(small_modbus_t *smb,uint8_t *data,uint16_t length);
-int _modbus_read(small_modbus_t *smb,uint8_t *data,uint16_t length);
-int _modbus_open(small_modbus_t *smb);
-int _modbus_close(small_modbus_t *smb);
-int _modbus_flush(small_modbus_t *smb);
-int _modbus_wait(small_modbus_t *smb,int timeout);
-
+//int _modbus_write(small_modbus_t *smb,uint8_t *data,uint16_t length);
+//int _modbus_read(small_modbus_t *smb,uint8_t *data,uint16_t length);
+//int _modbus_open(small_modbus_t *smb);
+//int _modbus_close(small_modbus_t *smb);
+//int _modbus_flush(small_modbus_t *smb);
+//int _modbus_wait(small_modbus_t *smb,int timeout);
 //static const char _modbus_ver[32] = "small_modbus_v1.00";
 
 int _modbus_init(small_modbus_t *smb)
@@ -140,27 +139,63 @@ int modbus_reg2array(void *dest_array_u16,uint8_t *source_modbus_reg,uint16_t mo
  */
 int modbus_connect(small_modbus_t *smb)
 {
-    if(smb != NULL)
-    {
-        return _modbus_open(smb);
-    }
-    return MODBUS_FAIL;
+	if((smb != NULL)&&(smb->port != NULL)&&(smb->port->open != NULL))
+	{
+			return smb->port->open(smb);
+	}
+	return MODBUS_FAIL;
 }
 
 int modbus_disconnect(small_modbus_t *smb)
 {
-    if(smb != NULL)
-    {
-        return _modbus_close(smb);
-    }
-    return MODBUS_FAIL;
+	if((smb != NULL)&&(smb->port != NULL)&&(smb->port->close != NULL))
+	{
+			return smb->port->close(smb);
+	}
+	return MODBUS_FAIL;
+}
+
+int modbus_write(small_modbus_t *smb,uint8_t *data,uint16_t length)
+{
+	if((smb != NULL)&&(smb->port != NULL)&&(smb->port->write != NULL))
+	{
+			return smb->port->write(smb,data,length);
+	}
+	return MODBUS_FAIL;
+}
+
+int modbus_read(small_modbus_t *smb,uint8_t *data,uint16_t length)
+{
+	if((smb != NULL)&&(smb->port != NULL)&&(smb->port->read != NULL))
+	{
+			return smb->port->read(smb,data,length);
+	}
+	return MODBUS_FAIL;
+}
+
+int modbus_flush(small_modbus_t *smb)
+{
+	if((smb != NULL)&&(smb->port != NULL)&&(smb->port->flush != NULL))
+	{
+			return smb->port->flush(smb);
+	}
+	return MODBUS_FAIL;
+}
+
+int modbus_wait(small_modbus_t *smb,int timeout)
+{
+	if((smb != NULL)&&(smb->port != NULL)&&(smb->port->wait != NULL))
+	{
+			return smb->port->wait(smb,timeout);
+	}
+	return MODBUS_FAIL;
 }
 
 int modbus_error_recovery(small_modbus_t *smb)
 {
-	if(smb!=NULL)
+	if((smb != NULL)&&(smb->port != NULL)&&(smb->port->flush != NULL))
 	{
-		return _modbus_flush(smb);
+			return smb->port->flush(smb);
 	}
 	return MODBUS_FAIL;
 }
@@ -173,20 +208,6 @@ int modbus_error_exit(small_modbus_t *smb,int code)
 	}
 	return code;
 }
-
-//int modbus_set_read_buff(small_modbus_t *smb,int byte,uint8_t *buff)
-//{
-//    smb->read_buff = buff;
-//    smb->read_buff_szie = byte;
-//    return MODBUS_FAIL;
-//}
-//
-//int modbus_set_write_buff(small_modbus_t *smb,int byte,uint8_t *buff)
-//{
-//    smb->write_buff = buff;
-//    smb->write_buff_szie = byte;
-//    return MODBUS_FAIL;
-//}
 
 int modbus_set_read_timeout(small_modbus_t *smb,int timeout_ms)
 {
@@ -252,8 +273,8 @@ int modbus_start_request(small_modbus_t *smb,uint8_t *request,int function,int a
     len = smb->core->check_send_pre(smb,request,len);
     if(len > 0)
     {
-         _modbus_write(smb,request, len);
-         return len;
+			 modbus_write(smb,request, len);
+			 return len;
     }
     return MODBUS_FAIL_REQUEST;
 }
@@ -272,13 +293,13 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
 
     while (read_want != 0)
     {
-        rc = _modbus_wait(smb,wait_time);
+        rc = modbus_wait(smb,wait_time);
         if(rc <= 0)
         {
             modbus_debug_error(smb,"[%d]wait(%d) error\n",rc,wait_time);
             return MODBUS_ERROR_WAIT;
         }
-        rc = _modbus_read(smb,response + read_length , read_want);
+        rc = modbus_read(smb,response + read_length , read_want);
         if(rc <= 0)
         {
             modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
@@ -645,16 +666,15 @@ int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime)
     int function = 0;
 
     read_want = smb->core->len_header + 1;  //header + function code
-
+		rc = modbus_wait(smb,waittime);
+		if(rc < 0)
+		{
+				modbus_debug_error(smb,"[%d]select(%d) \n",rc,waittime);
+				return rc;
+		}
     while (read_want != 0)
     {
-        rc = _modbus_wait(smb,waittime);
-        if(rc < 0)
-        {
-            modbus_debug_error(smb,"[%d]select(%d) \n",rc,waittime);
-            return rc;
-        }
-        rc = _modbus_read(smb,request + read_length , read_want);
+        rc = modbus_read(smb,request + read_length , read_want);
         if(rc <= 0)
         {
             modbus_debug_error(smb,"[%d]read(%d) \n",rc,read_want);
@@ -846,7 +866,7 @@ int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_le
 			response_len = smb->core->check_send_pre(smb,response,response_len);
 			if(response_len > 0)
 			{
-					 _modbus_write(smb,response, response_len);
+					 modbus_write(smb,response, response_len);
 					 return response_len;
 			}
 	}
@@ -1082,7 +1102,7 @@ int modbus_slave_handle_mapping(small_modbus_t *smb,uint8_t *request,uint16_t re
 			response_len = smb->core->check_send_pre(smb,response,response_len);
 			if(response_len > 0)
 			{
-					 _modbus_write(smb,response, response_len);
+					 modbus_write(smb,response, response_len);
 					 return response_len;
 			}
 	}

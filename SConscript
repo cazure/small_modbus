@@ -17,6 +17,6 @@ if GetDepend(['SMALL_MODBUS_RTU_TEST']):
 if GetDepend(['PKG_USING_SMALL_MODBUS_TCP_TEST']):
     src += Glob('test/modbus_tcp_test.c')
     
-group = DefineGroup('small_modbus', src, depend = ['PKG_USING_SMALL_MODBUS'], CPPPATH = path)
+group = DefineGroup('small_modbus', src, depend = [''], CPPPATH = path)
 
 Return('group')

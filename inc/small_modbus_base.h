@@ -57,14 +57,25 @@ enum returnCode
     MODBUS_OK = 0
 };
 
-
 enum waitCode
 {
     MODBUS_WAIT_FOREVER		= -1,
     MODBUS_WAIT_NO				= 0
 };
 
+enum coreType
+{
+	MODBUS_CORE_NONE	= 0,
+	MODBUS_CORE_RTU		= 1,
+	MODBUS_CORE_TCP		= 2
+};
 
+enum portType
+{
+	MODBUS_PORT_NONE	= 0,
+	MODBUS_PORT_DEVICE		= 1,
+	MODBUS_PORT_SOCKET		= 2
+};
 
 #define MODBUS_BROADCAST_ADDRESS    0
 
@@ -109,37 +120,49 @@ enum waitCode
 
 typedef struct _small_modbus        small_modbus_t;
 typedef struct _small_modbus_core   small_modbus_core_t;
+typedef struct _small_modbus_port   small_modbus_port_t;
 
 struct _small_modbus_core
 {
-    uint16_t type;
-    uint16_t len_header;
-    uint16_t len_checksum;
-    uint16_t len_adu_max;
-    int (*build_request_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num);
-    int (*build_response_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun);
-    int (*check_send_pre)(small_modbus_t *smb,uint8_t *buff,int length);
-    int (*check_wait_request)(small_modbus_t *smb,uint8_t *buff,int length);
-    int (*check_wait_response)(small_modbus_t *smb,uint8_t *buff,int length);
+	const uint16_t type;
+	const uint16_t len_header;
+	const uint16_t len_checksum;
+	const uint16_t len_adu_max;
+	int (*build_request_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num);
+	int (*build_response_header)(small_modbus_t *smb,uint8_t *buff,int slave,int fun);
+	int (*check_send_pre)(small_modbus_t *smb,uint8_t *buff,int length);
+	int (*check_wait_request)(small_modbus_t *smb,uint8_t *buff,int length);
+	int (*check_wait_response)(small_modbus_t *smb,uint8_t *buff,int length);
+};
+
+struct _small_modbus_port
+{
+	const uint16_t type;
+	const uint16_t port;
+	int (*open)(small_modbus_t *smb);
+	int (*close)(small_modbus_t *smb);
+	int (*read)(small_modbus_t *smb,uint8_t *data,uint16_t length);
+	int (*write)(small_modbus_t *smb,uint8_t *data,uint16_t length);
+	int (*flush)(small_modbus_t *smb);
+	int (*wait)(small_modbus_t *smb,int timeout);
 };
 
 struct _small_modbus
 {
-	int         status;
-	int         error_code;
-	int         read_timeout;
-	int         write_timeout;
-	uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];
-	uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];
+	uint8_t			mode;  //
 	uint8_t     slave_addr;
 	uint8_t     debug_level;
 	uint16_t    transfer_id;
 	uint16_t    protocol_id;
-	int32_t     socket_fd;
-
+	
+	int         status;
+	int         error_code;
+	uint32_t		read_timeout;
+	uint32_t		write_timeout;
+	uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];
+	uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];
 	small_modbus_core_t *core;
-	//small_modbus_port_t *port;
-	void *port;
+	small_modbus_port_t *port;
 };
 
 int _modbus_init(small_modbus_t *smb);
