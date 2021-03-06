@@ -5,14 +5,6 @@
  */
 #include "small_modbus.h"
 
-//int _modbus_write(small_modbus_t *smb,uint8_t *data,uint16_t length);
-//int _modbus_read(small_modbus_t *smb,uint8_t *data,uint16_t length);
-//int _modbus_open(small_modbus_t *smb);
-//int _modbus_close(small_modbus_t *smb);
-//int _modbus_flush(small_modbus_t *smb);
-//int _modbus_wait(small_modbus_t *smb,int timeout);
-//static const char _modbus_ver[32] = "small_modbus_v1.00";
-
 int _modbus_init(small_modbus_t *smb)
 {
     if(smb != NULL)
@@ -290,15 +282,16 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
 
     wait_time = smb->read_timeout;
     read_want = smb->core->len_header + 1;  //header + function code
-
+	
+		rc = modbus_wait(smb,wait_time);
+		if(rc <= 0)
+		{
+				modbus_debug_error(smb,"[%d]wait(%d) error\n",rc,wait_time);
+				return MODBUS_ERROR_WAIT;
+		}
+		
     while (read_want != 0)
     {
-        rc = modbus_wait(smb,wait_time);
-        if(rc <= 0)
-        {
-            modbus_debug_error(smb,"[%d]wait(%d) error\n",rc,wait_time);
-            return MODBUS_ERROR_WAIT;
-        }
         rc = modbus_read(smb,response + read_length , read_want);
         if(rc <= 0)
         {
@@ -666,25 +659,26 @@ int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime)
     int function = 0;
 
     read_want = smb->core->len_header + 1;  //header + function code
-		rc = modbus_wait(smb,waittime);
+	
+		rc = modbus_wait(smb,waittime); //wait data for time
 		if(rc < 0)
 		{
-				modbus_debug_error(smb,"[%d]select(%d) \n",rc,waittime);
-				return rc;
+			modbus_debug_error(smb,"[%d]wait(%d) error\n",rc,waittime);
+			return rc;
 		}
     while (read_want != 0)
     {
         rc = modbus_read(smb,request + read_length , read_want);
         if(rc <= 0)
         {
-            modbus_debug_error(smb,"[%d]read(%d) \n",rc,read_want);
+            modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
             return rc;
         }
         if(rc != read_want)
         {
-            modbus_debug_info(smb,"[%d]read(%d) \n",rc,read_want);
+            modbus_debug_info(smb,"[%d]read(%d) less\n",rc,read_want);
         }
-        waittime = smb->read_timeout;
+        // waittime = smb->read_timeout;
 
         read_length += rc;  //sum byte length
         read_want -= rc;    //sub byte length
@@ -790,12 +784,16 @@ int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_le
 				if(slave_callback)
 					response_exception = slave_callback(smb,query_function,query_address,query_num,&(request[smb->core->len_header + 3])); //回调
 				
-				if(response_exception >= 0)
+				if(response_exception > 0)
 				{
 					response[response_len++] = (query_address>>8);
 					response[response_len++] = (query_address&0x00ff);
 					response[response_len++] = (query_num>>8);
 					response[response_len++] = (query_num&0x00ff);
+				}
+				else
+				{
+					response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE;
 				}
 			}break;
 			case MODBUS_FC_WRITE_MULTIPLE_COILS:
@@ -809,14 +807,17 @@ int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_le
 				if(slave_callback)
 					response_exception = slave_callback(smb,query_function,query_address,query_num,&(request[smb->core->len_header + 5])); //回调
 				
-				if(response_exception >= 0)
+				if(response_exception > 0)
 				{
 					response[response_len++] = (query_address>>8);
 					response[response_len++] = (query_address&0x00ff);
 					response[response_len++] = (query_num>>8);
 					response[response_len++] = (query_num&0x00ff);
 				}
-				
+				else
+				{
+					response_exception = MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE;
+				}
 			}break;
 			case MODBUS_FC_REPORT_SLAVE_ID:
 			{

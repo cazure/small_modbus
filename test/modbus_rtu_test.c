@@ -1,137 +1,171 @@
 #include "stdio.h"
 #include "string.h"
-#include "small_modbus.h"
+#include "board.h"
+#include "small_modbus_rtthread.h"
 
 #define delay_ms        rt_thread_mdelay
 
-static small_modbus_mapping_t modbus_mapping = {0};
+#include "drv_board.h"
+static rt_device_t bio_dev;
+//static uint8_t DI_buff[32];
+//static uint8_t DO_buff[32];
+
 static small_modbus_t modbus_slave = {0};
-#define MODBUS_PRINTF(...) 
-//#define MODBUS_PRINTF(...)   modbus_debug((&modbus_slave),__VA_ARGS__)
+//#define MODBUS_PRINTF(...) 
+#define MODBUS_PRINTF(...)   modbus_debug((&modbus_slave),__VA_ARGS__)
 
-static int modbus_rtu_status_callback(small_modbus_mapping_t *mapping,int read_write,int data_type,int start,int num)
+static uint8_t temp_buff[256];
+
+static int modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,int addr,int num,void *read_write_data)
 {
-
-    return MODBUS_OK;
+	int rc = 0;
+	switch(function_code)
+	{
+		case MODBUS_FC_READ_HOLDING_COILS:
+		{
+			rc = rt_device_read(bio_dev,DO_MASK+addr,temp_buff,num);
+			rc = modbus_array2bit(read_write_data, temp_buff, rc);
+//			rc = master_read(IOTAB_DO,addr,num,temp_buff);
+//			rc = modbus_array2bit(read_write_data, temp_buff, rc);
+		}break;
+		case MODBUS_FC_READ_INPUTS_COILS:
+		{
+			rc = rt_device_read(bio_dev,DI_MASK+addr,temp_buff,num);
+			rc = modbus_array2bit(read_write_data, temp_buff, rc);
+//			rc = master_read(IOTAB_DI,addr,num,temp_buff);
+//			rc = modbus_array2bit(read_write_data, temp_buff, rc);
+		}break;
+		case MODBUS_FC_READ_HOLDING_REGISTERS:
+		{
+			rc = rt_device_read(bio_dev,AO_MASK+addr,temp_buff,num);
+			rc = modbus_array2reg(read_write_data, temp_buff, rc);
+//			rc = master_read(IOTAB_AO,addr,num,temp_buff);
+//			rc = modbus_array2reg(read_write_data, temp_buff, rc);
+		}break;
+		case MODBUS_FC_READ_INPUT_REGISTERS:
+		{
+			rc = rt_device_read(bio_dev,AI_MASK+addr,temp_buff,num);
+			rc = modbus_array2reg(read_write_data, temp_buff, rc);
+//			rc = master_read(IOTAB_AI,addr,num,temp_buff);
+//			rc = modbus_array2reg(read_write_data, temp_buff, rc);
+		}break;
+		
+		case MODBUS_FC_WRITE_SINGLE_COIL:
+		{
+			uint8_t value = num?1:0;
+			rt_device_write(bio_dev,DO_MASK+addr,&value,1);
+//			uint8_t value = num?1:0;
+//			rc = master_write(IOTAB_DO,addr,1,&value);
+		}break;
+		case MODBUS_FC_WRITE_SINGLE_REGISTER:
+		{
+			uint8_t value = num?1:0;
+			rt_device_write(bio_dev,AO_MASK+addr,&value,1);
+//			uint16_t value = num;
+//			rc = master_write(IOTAB_AO,addr,1,&value);
+		}break;
+		
+		case MODBUS_FC_WRITE_MULTIPLE_COILS:
+		{
+			rc = modbus_bit2array(temp_buff,read_write_data,num);
+			rc = rt_device_write(bio_dev,DO_MASK+addr,temp_buff,num);
+//			rc = modbus_bit2array(temp_buff,read_write_data,num);
+//			rc = master_write(IOTAB_DO,addr,num,temp_buff);
+		}break;
+		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
+		{
+			rc = modbus_reg2array(temp_buff,read_write_data,num);
+			rc = rt_device_write(bio_dev,AO_MASK+addr,temp_buff,num);
+//			rc = modbus_reg2array(temp_buff,read_write_data,num);
+//			rc = master_write(IOTAB_AO,addr,num,temp_buff);
+		}break;
+	}	
+	if(rc<0)
+	{
+		MODBUS_PRINTF("callback fail %d\n",rc);
+	}
+	return rc;
 }
+
+int uart4_rts(int on)
+{
+	board_uart_dir(4,on);
+	return 0;
+}
+
 
 void modbus_rtu_slave_thread(void *param)
 {
-	hwport_t *port;
 	int rc = 0;
-	static uint8_t receive_buf[128];
+	modbus_rtu_init(&modbus_slave,modbus_port_device_create("uart4"));
 	
-	port = hwport_get_by_id(PORT_RS485_1);
-	modbus_rtu_init(&modbus_slave,port);
-	modbus_set_slave(&modbus_slave,8);
+	struct serial_configure serial_config;
+	
+	serial_config.baud_rate = BAUD_RATE_9600,
+	serial_config.data_bits = DATA_BITS_8,
+	serial_config.stop_bits = STOP_BITS_1,
+	serial_config.bufsz = RT_SERIAL_RB_BUFSZ,
+	serial_config.parity = PARITY_NONE,
+	
+	modbus_port_device_set_config(&modbus_slave,&serial_config);
+	modbus_port_device_set_rts(&modbus_slave,uart4_rts);
+	
+	modbus_set_slave(&modbus_slave,1);
 	modbus_connect(&modbus_slave);
+	rt_kprintf("modbus slave addr:%d\n",1);
+	
+	bio_dev = rt_device_find("bio");
+	
+	rt_device_open(bio_dev,0);
+	
 	while (1)
 	{
-		hwport_take(port);
-		rc = modbus_wait_poll(&modbus_slave, receive_buf);
-		MODBUS_PRINTF("[slave]%d\n",rc);
+		rc = modbus_slave_wait_handle(&modbus_slave,modbus_rtu_slave_callback,MODBUS_WAIT_FOREVER);
 		if (rc > 0)
 		{
-			rc = modbus_handle_poll(&modbus_slave,receive_buf, rc,&modbus_mapping);
-			if(rc)
-			{
-				MODBUS_PRINTF("[slave] ok %d\n",rc);
-			}
+			
 		}else
 		{
 			modbus_error_recovery(&modbus_slave);
 		}
-		hwport_release(port);
 	}
-	modbus_disconnect(&modbus_slave);
-}
-
-small_modbus_t modbus_master = {0};
-#undef MODBUS_PRINTF
-#define MODBUS_PRINTF(...)   modbus_debug((&modbus_master),__VA_ARGS__)
-
-void modbus_rtu_master_thread(void *param)
-{
-	hwport_t *port;
-	int rc =0 ,num = 0;
-	
-	port = hwport_get_by_id(PORT_RS485_1);
-	modbus_rtu_init(&modbus_slave,port);
-	modbus_set_slave(&modbus_master,1);
-	modbus_connect(&modbus_master);
-	while (1)
-	{
-			modbus_error_recovery(&modbus_master);
-			modbus_set_slave(&modbus_master, 1);
-			rc = modbus_read_bits(&modbus_master, 0 , 16, modbus_mapping.bit.array);
-			rt_kprintf("master1:%d\n",rc);
-
-			modbus_error_recovery(&modbus_master);
-			modbus_set_slave(&modbus_master, 1);
-			rc = modbus_write_bits(&modbus_master, 0 , 16, modbus_mapping.bit.array);
-			rt_kprintf("master2:%d\n",rc);
-
-			modbus_error_recovery(&modbus_master);
-			modbus_set_slave(&modbus_master, 1);
-			rc = modbus_read_input_bits(&modbus_master, 0, 16, modbus_mapping.input_bit.array);
-			rt_kprintf("master3:%d\n",rc);
-
-			modbus_error_recovery(&modbus_master);
-			modbus_set_slave(&modbus_master, 1);
-			rc = modbus_read_registers(&modbus_master, 0, 16, modbus_mapping.registers.array);
-			rt_kprintf("master4:%d\n",rc);
-
-			modbus_error_recovery(&modbus_master);
-			modbus_set_slave(&modbus_master, 1);
-			rc = modbus_write_registers(&modbus_master, 0, 16, modbus_mapping.registers.array);
-			rt_kprintf("master5:%d\n",rc);
-
-			modbus_error_recovery(&modbus_master);
-			modbus_set_slave(&modbus_master, 1);
-			rc = modbus_read_input_registers(&modbus_master, 0, 16, modbus_mapping.input_registers.array);
-			rt_kprintf("master6:%d\n",rc);
-			delay_ms(3000);
-	}
-	modbus_disconnect(&modbus_master);
+	//modbus_disconnect(&modbus_slave);
 }
 
 
 int modbus_rtu_test(void)
 {
-    rt_thread_t tid3,tid6;
-    uint8_t type = 0;
-    rt_kprintf("init %d\n",type);
+	rt_thread_t tid3,tid6;
+	uint8_t type = 0;
+	rt_kprintf("init %d\n",type);
 
+	tid3 = rt_thread_create("Mslave",modbus_rtu_slave_thread, RT_NULL,2048,20, 10);
+	if (tid3 != RT_NULL)
+			rt_thread_startup(tid3);
 
-    modbus_mapping_new(modbus_mapping,modbus_rtu_status_callback,0,64,0,64,0,64,0,64);
-
-    tid3 = rt_thread_create("modbus S",modbus_rtu_slave_thread, RT_NULL,2048,20, 10);
-    if (tid3 != RT_NULL)
-        rt_thread_startup(tid3);
-
-//    tid6 = rt_thread_create("modbus M",modbus_rtu_master_thread, RT_NULL,2048,20, 10);
-//    if (tid6 != RT_NULL)
-//        rt_thread_startup(tid6);
-    return 0;
+//	tid6 = rt_thread_create("modbus M",modbus_rtu_master_thread, RT_NULL,2048,20, 10);
+//	if (tid6 != RT_NULL)
+//		rt_thread_startup(tid6);
+	return 0;
 }
 
-#if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
-#include <finsh.h>
-int modbus_rtu_debug(int argc, char**argv)
-{
-    int now_level = 0;
-    if(argc<2)
-    {
-        rt_kprintf("modbus_rtu_debug [0-2]\n0.disable 1.error  2.info\n");
-    }else
-    {
-        now_level  = atoi(argv[1])%3;
-        rt_kprintf("modbus_rtu_debug %d\n",now_level);
-        modbus_set_debug(&modbus_slave,now_level);
-        modbus_set_debug(&modbus_master,now_level);
-    }
-    return RT_EOK;
-}
-MSH_CMD_EXPORT(modbus_rtu_debug,modbus_rtu_debug [0-2]);
-MSH_CMD_EXPORT(modbus_rtu_test,modbus rtu test);
-#endif
+//#if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
+//#include <finsh.h>
+//int modbus_rtu_debug(int argc, char**argv)
+//{
+//    int now_level = 0;
+//    if(argc<2)
+//    {
+//        rt_kprintf("modbus_rtu_debug [0-2]\n0.disable 1.error  2.info\n");
+//    }else
+//    {
+//        now_level  = atoi(argv[1])%3;
+//        rt_kprintf("modbus_rtu_debug %d\n",now_level);
+//        modbus_set_debug(&modbus_slave,now_level);
+//        modbus_set_debug(&modbus_master,now_level);
+//    }
+//    return RT_EOK;
+//}
+//MSH_CMD_EXPORT(modbus_rtu_debug,modbus_rtu_debug [0-2]);
+//MSH_CMD_EXPORT(modbus_rtu_test,modbus rtu test);
+//#endif
