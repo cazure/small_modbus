@@ -122,16 +122,15 @@ int serial_thread_init(void)
 	static uint32_t init_flag = 0;
 	if(init_flag==0)
 	{
-		 /* 初始化消息队列 */
     rt_mq_init(&rx_mq, "rx_mq",msg_pool,sizeof(struct rx_msg),sizeof(msg_pool),RT_IPC_FLAG_FIFO);        /* 如果有多个线程等待，按照先来先得到的方法分配消息 */
 		
-		/* 创建 serial 线程 */
     rt_thread_t thread = rt_thread_create("serial", serial_thread_entry, RT_NULL, 2048, 25, 6);
-    /* 创建成功则启动线程 */
+		
     if (thread != RT_NULL)
     {
         rt_thread_startup(thread);
     }
+		init_flag = 1;
 	}
 	return 0;
 }
