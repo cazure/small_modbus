@@ -1,28 +1,8 @@
 #include "stdio.h"
 #include "string.h"
-#include "modbus_tcp_rtos.h"
+#include "board.h"
+#include "small_modbus_rtthread.h"
 
-#include <rtthread.h>
-#include <rtdevice.h>
-#include <board.h>
-#include "drv_common.h"
-#include "stdio.h"
-#include "string.h"
-
-#ifdef RT_USING_DFS
-#include <dfs_fs.h>
-#include <dfs_posix.h>
-#include <dfs_posix.h>
-#include <sys/time.h>
-#include <dfs_select.h>
-#include <sal_socket.h>
-#endif
-
-#include "controller.h"
-
-#define DBG_TAG "mbtcp"
-#define DBG_LVL DBG_LOG
-#include <rtdbg.h>
 
 #define delay_ms        rt_thread_mdelay
 #define MAX_CLIENT_NUM  3
@@ -36,18 +16,75 @@ typedef struct
 
 static client_session_t client_session[MAX_CLIENT_NUM];
 
-static small_modbus_mapping_t modbus_tcp_mapping = {0};
-static small_modbus_t modbus_tcp_slave = {0};
-static modbus_tcp_config_t modbus_config = {0};
+
+#define DO_MASK		0x10000000
+#define DI_MASK		0x20000000
+#define AO_MASK		0x40000000
+#define AI_MASK		0x80000000
+static rt_device_t bio_dev = {0};  //test device
+
+static small_modbus_t modbus_tcp_slave = {0}; 
+//#define MODBUS_PRINTF(...) 
 #define MODBUS_PRINTF(...)   modbus_debug((&modbus_tcp_slave),__VA_ARGS__)
 
-static int modbus_tcp_status_callback(small_modbus_mapping_t *mapping,int read_write,int data_type,int start,int num)
-{
+static uint8_t temp_buff[256];
 
-    return MODBUS_OK;
+static int test_modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,int addr,int num,void *read_write_data)
+{
+	int rc = 0;
+	switch(function_code)
+	{
+		case MODBUS_FC_READ_HOLDING_COILS:
+		{
+			rc = rt_device_read(bio_dev,DO_MASK+addr,temp_buff,num);
+			rc = modbus_array2bit(read_write_data, temp_buff, rc);
+		}break;
+		case MODBUS_FC_READ_INPUTS_COILS:
+		{
+			rc = rt_device_read(bio_dev,DI_MASK+addr,temp_buff,num);
+			rc = modbus_array2bit(read_write_data, temp_buff, rc);
+		}break;
+		case MODBUS_FC_READ_HOLDING_REGISTERS:
+		{
+			rc = rt_device_read(bio_dev,AO_MASK+addr,temp_buff,num);
+			rc = modbus_array2reg(read_write_data, temp_buff, rc);
+		}break;
+		case MODBUS_FC_READ_INPUT_REGISTERS:
+		{
+			rc = rt_device_read(bio_dev,AI_MASK+addr,temp_buff,num);
+			rc = modbus_array2reg(read_write_data, temp_buff, rc);
+		}break;
+		
+		case MODBUS_FC_WRITE_SINGLE_COIL:
+		{
+			uint8_t value1 = num?1:0;
+			rc = rt_device_write(bio_dev,DO_MASK+addr,&value1,1);
+		}break;
+		case MODBUS_FC_WRITE_SINGLE_REGISTER:
+		{
+			uint16_t value2 = num;
+			rc = rt_device_write(bio_dev,AO_MASK+addr,&value2,1);
+		}break;
+		
+		case MODBUS_FC_WRITE_MULTIPLE_COILS:
+		{
+			rc = modbus_bit2array(temp_buff,read_write_data,num);
+			rc = rt_device_write(bio_dev,DO_MASK+addr,temp_buff,num);
+		}break;
+		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
+		{
+			rc = modbus_reg2array(temp_buff,read_write_data,num);
+			rc = rt_device_write(bio_dev,AO_MASK+addr,temp_buff,num);
+		}break;
+	}	
+	if(rc<0)
+	{
+		MODBUS_PRINTF("callback fail %d\n",rc);
+	}
+	return rc;
 }
 
-static void modbus_tcp_slave_thread(void *param)
+static void test_modbus_tcp_slave_thread(void *param)
 {
     int server_fd = -1;
     int max_fd = -1;
@@ -56,15 +93,6 @@ static void modbus_tcp_slave_thread(void *param)
     struct timeval select_timeout;
 
     rt_thread_mdelay(3000);
-
-    //modbus_mapping_new(modbus_mapping,modbus_status_callback,0,64,0,64,0,64,0,64);
-    //controller_t * con = &controller;
-    IO_mapping_t *iotable = &(controller.io_table);
-    modbus_mapping_init(modbus_tcp_mapping,modbus_tcp_status_callback,
-             iotable->DO.start,iotable->DO.num,iotable->DO.array,
-             iotable->DI.start,iotable->DI.num,iotable->DI.array,
-             iotable->AO.start,iotable->AO.num,iotable->AO.array,
-             iotable->AI.start,iotable->AI.num,iotable->AI.array);
 
     for (int i = 0; i < MAX_CLIENT_NUM; i++)
     {
@@ -189,37 +217,15 @@ _mbtcp_restart:
 
 }
 
-int modbus_tcp_test(void)
+int test_modbus_tcp_slave(void)
 {
-    LOG_I("init,mac:%s,ip:%s",dev_get_mac(),dev_get_ip());
-
-//    static struct rt_thread thread_mbtcp;
-//    rt_thread_init(&thread_mbtcp,"mbtcp", modbus_tcp_thread,NULL, _stack_mtcp,4*1024, 5, 10);
-//    rt_thread_startup(&thread_mbtcp);
-
-    rt_thread_t tid;
-    tid = rt_thread_create("mbtcp",modbus_tcp_slave_thread, RT_NULL,2048,12, 10);
-    if (tid != RT_NULL)
-        rt_thread_startup(tid);
-    return RT_EOK;
+	rt_thread_t tid;
+	
+	bio_dev = rt_device_find("bio");
+	rt_device_open(bio_dev,0);
+	
+	tid = rt_thread_create("slave",test_modbus_tcp_slave_thread, &modbus_tcp_slave,2048,20, 10);
+	if (tid != RT_NULL)
+			rt_thread_startup(tid);
+	return 0;
 }
-
-#if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
-#include <finsh.h>
-int modbus_tcp_debug(int argc, char**argv)
-{
-    int now_level = 0;
-    if(argc<2)
-    {
-        rt_kprintf("modbus_tcp_debug [0-2]\n0.disable 1.error  2.info\n");
-    }else
-    {
-        now_level  = atoi(argv[1])%3;
-        rt_kprintf("modbus_tcp_debug %d\n",now_level);
-        modbus_set_debug(&modbus_tcp_slave,now_level);
-    }
-    return RT_EOK;
-}
-MSH_CMD_EXPORT(modbus_tcp_debug,modbus_tcp_debug [0-2]);
-MSH_CMD_EXPORT(modbus_tcp_test,modbus tcp test);
-#endif
