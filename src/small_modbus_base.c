@@ -9,18 +9,17 @@ int _modbus_init(small_modbus_t *smb)
 {
     if(smb != NULL)
     {
-        if(smb->read_timeout==0)
-        {
-            smb->read_timeout = 100;
-        }
-        if(smb->write_timeout==0)
-        {
-            smb->write_timeout = 30;
-        }
-        if(smb->debug_level==0)
-        {
-            smb->debug_level = 0;
-        }
+			smb->transfer_id = 0;
+			smb->protocol_id = 0;
+			smb->debug_level = 0;
+			if(smb->timeout_frame==0)
+			{
+					smb->timeout_frame = 100;
+			}
+			if(smb->timeout_byte==0)
+			{
+					smb->timeout_byte = 10;
+			}
     }
     return MODBUS_OK;
 }
@@ -183,6 +182,26 @@ int modbus_wait(small_modbus_t *smb,int timeout)
 	return MODBUS_FAIL;
 }
 
+int modbus_want_read(small_modbus_t *smb,uint8_t *buff,uint16_t len,int32_t wait_time)
+{
+	uint8_t *read_buff = buff;
+	uint16_t read_len = 0;
+	int rc = 0;
+	
+	do{
+		read_len += modbus_read(smb,read_buff+read_len , len - read_len);
+		if(read_len >= len)
+		{
+			return read_len; //read ok
+		}
+		rc = modbus_wait(smb,wait_time);
+	}while(rc >= MODBUS_OK);
+	
+	return rc; //happen An error occurred
+}
+
+
+
 int modbus_error_recovery(small_modbus_t *smb)
 {
 	if((smb != NULL)&&(smb->port != NULL)&&(smb->port->flush != NULL))
@@ -201,15 +220,15 @@ int modbus_error_exit(small_modbus_t *smb,int code)
 	return code;
 }
 
-int modbus_set_read_timeout(small_modbus_t *smb,int timeout_ms)
+int modbus_set_frame_timeout(small_modbus_t *smb,int timeout_ms)
 {
-    smb->read_timeout = timeout_ms;
+    smb->timeout_frame = timeout_ms;
     return MODBUS_OK;
 }
 
-int modbus_set_write_timeout(small_modbus_t *smb,int timeout_ms)
+int modbus_set_byte_timeout(small_modbus_t *smb,int timeout_ms)
 {
-    smb->write_timeout = timeout_ms;
+    smb->timeout_byte = timeout_ms;
     return MODBUS_OK;
 }
 
@@ -280,29 +299,25 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
     int read_position = 0;
     int function = 0;
 
-    wait_time = smb->read_timeout;
+    wait_time = smb->timeout_frame;
     read_want = smb->core->len_header + 1;  //header + function code
 	
-		rc = modbus_wait(smb,wait_time);
-		if(rc <= 0)
-		{
-				modbus_debug_error(smb,"[%d]wait(%d) error\n",rc,wait_time);
-				return MODBUS_ERROR_WAIT;
-		}
-		
     while (read_want != 0)
     {
-        rc = modbus_read(smb,response + read_length , read_want);
-        if(rc <= 0)
+				rc = modbus_want_read(smb,response + read_length,read_want,wait_time);
+        if(rc <= MODBUS_OK)
         {
-            modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
-            return MODBUS_ERROR_READ;
+						if(rc < MODBUS_TIMEOUT)
+						{
+							modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
+						}
+            return rc;
         }
         if(rc != read_want)
         {
             modbus_debug_info(smb,"[%d]read(%d) less\n",rc,read_want);
         }
-
+				
         read_length += rc;  //sum byte length
         read_want -= rc;    //sub byte length
 
@@ -356,6 +371,10 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
                 read_position = 2;
             }
         }
+				if(read_want)
+				{
+					wait_time = smb->timeout_byte * read_want; // byte_time * byte_num
+				}
     }
     return smb->core->check_wait_response(smb,response,read_length);
 }
@@ -645,12 +664,8 @@ int modbus_write_and_read_registers(small_modbus_t *smb, int write_addr, int wri
     return MODBUS_FAIL;
 }
 
-
-
-
-
 /* slave wait query data */
-int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime)
+int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t wait_time)
 {
     int rc = 0;
     int read_want = 0;
@@ -660,25 +675,21 @@ int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime)
 
     read_want = smb->core->len_header + 1;  //header + function code
 	
-		rc = modbus_wait(smb,waittime); //wait data for time
-		if(rc < 0)
-		{
-			modbus_debug_error(smb,"[%d]wait(%d) error\n",rc,waittime);
-			return rc;
-		}
     while (read_want != 0)
     {
-        rc = modbus_read(smb,request + read_length , read_want);
-        if(rc <= 0)
+				rc = modbus_want_read(smb,request + read_length,read_want,wait_time);
+        if(rc <= MODBUS_OK)
         {
-            modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
+						if(rc < MODBUS_TIMEOUT)
+						{
+							modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
+						}
             return rc;
         }
         if(rc != read_want)
         {
             modbus_debug_info(smb,"[%d]read(%d) less\n",rc,read_want);
         }
-        // waittime = smb->read_timeout;
 
         read_length += rc;  //sum byte length
         read_want -= rc;    //sub byte length
@@ -731,6 +742,10 @@ int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime)
                 read_position = 2;
             }
         }
+				if(read_want)
+				{
+					wait_time = smb->timeout_byte * read_want; // byte_time * byte_num
+				}
     }
     return smb->core->check_wait_request(smb,request,read_length);
 }

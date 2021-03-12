@@ -157,8 +157,8 @@ struct _small_modbus
 	
 	int         status;
 	int         error_code;
-	uint32_t		read_timeout;
-	uint32_t		write_timeout;
+	uint32_t		timeout_frame;
+	uint32_t		timeout_byte;
 	uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];
 	uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];
 	small_modbus_core_t *core;

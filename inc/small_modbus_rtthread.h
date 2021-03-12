@@ -8,22 +8,27 @@
 #include "small_modbus_rtu.h"
 #include "small_modbus_tcp.h"
 
+#ifdef RT_USING_DFS
+#include <dfs_fs.h>
+#include <dfs_posix.h>
+#include <dfs_posix.h>
+#include <sys/time.h>
+#include <dfs_select.h>
+#include <sal_socket.h>
+#endif
+
 typedef struct _small_modbus_port_device   small_modbus_port_device_t;
 
 struct _small_modbus_port_device
 {
-	struct _small_modbus_port port;
-	const char 					*device_name;
-	struct rt_device 		*device;
-	struct rt_semaphore 	rx_sem;
-	struct rt_ringbuffer 	rx_ring;
-  struct serial_configure serial_config;
+	struct _small_modbus_port 	port;
+	const char								*device_name;
+	struct rt_device					*device;
+	struct rt_semaphore 			rx_sem;
+	rt_size_t									rx_size;
+	int												oflag;
+	
   int 		(*rts_set)(int on);
-//	uint8_t read_buff[64];
-	uint8_t _ring_buff[256];
-	int			oflag;
-	void 		*old_user_data;
-	rt_err_t (*old_rx_indicate)(rt_device_t dev, rt_size_t size);
 };
 
 
@@ -39,35 +44,29 @@ struct _small_modbus_port_socket
 	int32_t     socket_fd;
 };
 
-//slave server
-//int modbus_tcp_accept(small_modbus_t *smb);
-//int modbus_tcp_select(small_modbus_t *smb,int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
-//int modbus_tcp_set_socket(small_modbus_t *smb,int socket_fd);
-
-//int modbus_rtu_init(small_modbus_t *smb,void *port);
-//int modbus_tcp_init(small_modbus_t *smb,void *port);
-
-
-int modbus_rtu_init(small_modbus_t *smb,small_modbus_port_t *port);
-int modbus_tcp_init(small_modbus_t *smb,small_modbus_port_t *port);
 /*
-*device
+*modbus port device
 */
 int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_name);
-small_modbus_port_t *modbus_port_device_create(const char *device_name);
+small_modbus_port_device_t *modbus_port_device_create(const char *device_name);
+small_modbus_port_device_t *modbus_port_device_get(small_modbus_t *smb);
 
-int modbus_port_device_set_config(small_modbus_t *smb,struct serial_configure *serial_config);
-int modbus_port_device_set_rts(small_modbus_t *smb,int (*rts_set)(int on));
+int modbus_set_rts(small_modbus_t *smb,int (*rts_set)(int on));
+int modbus_set_serial_config(small_modbus_t *smb,struct serial_configure *serial_config);
+int modbus_set_oflag(small_modbus_t *smb,int oflag);
 
 /*
-*socket
+*modbus port socket
 */
 int modbus_port_socket_init(small_modbus_port_socket_t *port,char *hostname,char *hostport);
-small_modbus_port_t *modbus_port_socket_create(char *hostname,char *hostport);
+small_modbus_port_socket_t *modbus_port_socket_create(char *hostname,char *hostport);
+small_modbus_port_socket_t *modbus_port_socket_get(small_modbus_t *smb);
 
-
-small_modbus_t *modbus_rtu_create(const char *device_name);
-small_modbus_t *modbus_tcp_create(char *hostname,char *hostport);
+/*
+*modbus_init
+*/
+int modbus_init(small_modbus_t *smb,uint8_t core_type,void *port);
+small_modbus_t *modbus_create(uint8_t core_type,void *port);
 
 #endif /* _SMALL_MODBUS_RTTHREAD_H_ */
 
