@@ -21,7 +21,7 @@ typedef struct _small_modbus_port_device   small_modbus_port_device_t;
 
 struct _small_modbus_port_device
 {
-	struct _small_modbus_port 	port;
+	struct _small_modbus_port 	base;
 	const char								*device_name;
 	struct rt_device					*device;
 	struct rt_semaphore 			rx_sem;
@@ -36,7 +36,7 @@ typedef struct _small_modbus_port_socket   small_modbus_port_socket_t;
 
 struct _small_modbus_port_socket
 {
-	struct _small_modbus_port port;
+	struct _small_modbus_port base;
 	const char *hostname;
 	const char *hostport;
 	

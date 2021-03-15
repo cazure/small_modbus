@@ -137,8 +137,7 @@ struct _small_modbus_core
 
 struct _small_modbus_port
 {
-	const uint16_t type;
-	const uint16_t port;
+	const uint32_t type;
 	int (*open)(small_modbus_t *smb);
 	int (*close)(small_modbus_t *smb);
 	int (*read)(small_modbus_t *smb,uint8_t *data,uint16_t length);

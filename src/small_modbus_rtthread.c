@@ -11,6 +11,7 @@
 int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 {
 	static char log_buf[256];
+	rt_enter_critical();
 	if(level <= smb->debug_level)
 	{
 		va_list args;
@@ -19,6 +20,7 @@ int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 		va_end(args);
 		rt_kputs(log_buf);
 	}
+	rt_exit_critical();
 	return 0;
 }
 
@@ -115,20 +117,28 @@ static int _modbus_rtdevice_wait(small_modbus_t *smb,int timeout)
 /*
 *modbus port device
 */
-small_modbus_port_t _port_device_default = 
-{
-	.type = MODBUS_PORT_DEVICE,
-	.port = MODBUS_PORT_DEVICE,
-	.open = _modbus_rtdevice_open,
-	.close = _modbus_rtdevice_close,
-	.read = _modbus_rtdevice_read,
-	.write = _modbus_rtdevice_write,
-	.flush = _modbus_rtdevice_flush,
-	.wait = _modbus_rtdevice_wait
-};
+//small_modbus_port_t _port_device_default = 
+//{
+//	.type = MODBUS_PORT_DEVICE,
+//	.open = _modbus_rtdevice_open,
+//	.close = _modbus_rtdevice_close,
+//	.read = _modbus_rtdevice_read,
+//	.write = _modbus_rtdevice_write,
+//	.flush = _modbus_rtdevice_flush,
+//	.wait = _modbus_rtdevice_wait
+//};
 int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_name)
 {
-	rt_memcpy(&port->port,&_port_device_default,sizeof(small_modbus_port_t));
+	//rt_memcpy(&port->base,&_port_device_default,sizeof(small_modbus_port_t));
+	
+	(*(uint32_t *)&(port->base.type)) = MODBUS_PORT_DEVICE;
+	port->base.open = _modbus_rtdevice_open;
+	port->base.close = _modbus_rtdevice_close;
+	port->base.read = _modbus_rtdevice_read;
+	port->base.write = _modbus_rtdevice_write;
+	port->base.flush = _modbus_rtdevice_flush;
+	port->base.wait = _modbus_rtdevice_wait;
+	
 	port->device_name = device_name;
 	port->device = rt_device_find(device_name);
 	if(port->device)
@@ -192,20 +202,29 @@ int modbus_set_oflag(small_modbus_t *smb,int oflag)
 /*
 *modbus port socket
 */
-small_modbus_port_t _port_socket_default = 
-{
-	.type = MODBUS_PORT_SOCKET,
-	.port = MODBUS_PORT_SOCKET,
-	.open = _modbus_rtdevice_open,
-	.close = _modbus_rtdevice_close,
-	.read = _modbus_rtdevice_read,
-	.write = _modbus_rtdevice_write,
-	.flush = _modbus_rtdevice_flush,
-	.wait = _modbus_rtdevice_wait
-};
+//small_modbus_port_t _port_socket_default = 
+//{
+//	.type = MODBUS_PORT_SOCKET,
+//	.open = _modbus_rtdevice_open,
+//	.close = _modbus_rtdevice_close,
+//	.read = _modbus_rtdevice_read,
+//	.write = _modbus_rtdevice_write,
+//	.flush = _modbus_rtdevice_flush,
+//	.wait = _modbus_rtdevice_wait
+//};
 int modbus_port_socket_init(small_modbus_port_socket_t *port,char *hostname,char *hostport)
 {
-	rt_memcpy(&port->port,&_port_socket_default,sizeof(small_modbus_port_t));
+//	rt_memcpy(&port->base,&_port_socket_default,sizeof(small_modbus_port_t));
+	//rt_memcpy(&port->base,&_port_device_default,sizeof(small_modbus_port_t));
+	
+	(*(uint32_t *)&(port->base.type)) = MODBUS_PORT_DEVICE;
+	port->base.open = _modbus_rtdevice_open;
+	port->base.close = _modbus_rtdevice_close;
+	port->base.read = _modbus_rtdevice_read;
+	port->base.write = _modbus_rtdevice_write;
+	port->base.flush = _modbus_rtdevice_flush;
+	port->base.wait = _modbus_rtdevice_wait;
+	
 	port->hostname = hostname;
 	port->hostport = hostport;
 	port->socket_fd = 0;
