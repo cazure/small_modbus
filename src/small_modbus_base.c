@@ -125,6 +125,17 @@ int _modbus_init(small_modbus_t *smb)
 //	return byte_num;
 //}
 
+
+int modbus_array2bit(uint8_t *dest_modbus_bit,void *source_array_u8,uint16_t array_num)
+{
+
+}
+int modbus_array2reg(uint8_t *dest_modbus_reg,void *source_array_u16,uint16_t array_num);
+
+int modbus_bit2array(void *dest_array_u8,uint8_t *source_modbus_bit,uint16_t modbus_num);
+int modbus_reg2array(void *dest_array_u16,uint8_t *source_modbus_reg,uint16_t modbus_num);
+
+
 int _modbus_check_addr_num(uint8_t function,uint16_t address,uint16_t num)
 {
 	switch (function)
@@ -317,8 +328,8 @@ int modbus_start_request(small_modbus_t *smb,uint8_t *request,int function,int a
 		case MODBUS_FC_WRITE_SINGLE_COIL:
 		case MODBUS_FC_WRITE_SINGLE_REGISTER:
 		{
-			request[len-2] = write_data_u8p[1];
-			request[len-1] = write_data_u8p[0];
+			request[len-2] = write_data_u8p[0];
+			request[len-1] = write_data_u8p[1];
 		}break;
 		case MODBUS_FC_WRITE_MULTIPLE_COILS:
 		{
