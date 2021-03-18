@@ -14,8 +14,7 @@ modbus端口（rtthread device、rtthread sal socket）
 
 ## 通用函数：
 
-`
-
+```c
 int modbus_connect(small_modbus_t *smb);
 int modbus_disconnect(small_modbus_t *smb);
 int modbus_write(small_modbus_t *smb,uint8_t *data,uint16_t length);
@@ -29,8 +28,7 @@ int modbus_set_frame_timeout(small_modbus_t *smb,int timeout_ms);
 int modbus_set_byte_timeout(small_modbus_t *smb,int timeout_ms);
 int modbus_set_slave(small_modbus_t *smb, int slave);
 int modbus_set_debug(small_modbus_t *smb, int level);
-
-`
+```
 
 
 
@@ -38,8 +36,7 @@ int modbus_set_debug(small_modbus_t *smb, int level);
 
 ## 主机端函数：
 
-`
-
+```c
 /* master start request */
 int modbus_start_request(small_modbus_t *smb,uint8_t *request,int function,int addr,int num,void *write_data);
 /* master wait for confirmation message */
@@ -55,18 +52,15 @@ int modbus_read_input_registers(small_modbus_t *smb, int addr, int num, uint16_t
 int modbus_write_bit(small_modbus_t *smb, int addr, int write_status);
 int modbus_write_register(small_modbus_t *smb, int addr, int write_value);
 int modbus_write_bits(small_modbus_t *smb, int addr, int num,uint8_t *write_data);
-
-`
+```
 
 
 
 ## 从机端函数：
 
-`
-
+```C
 /* slave callback */
 typedef int(*small_modbus_slave_callback_t)(small_modbus_t *smb,int function_code,int addr,int num,void *read_write_data);
-
 /* slave mode api */
 /* slave wait query data */
 int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime);
@@ -74,12 +68,7 @@ int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime);
 int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_len,small_modbus_slave_callback_t slave_callback);
 /* slave wait and handle query for callback */
 int modbus_slave_wait_handle(small_modbus_t *smb,small_modbus_slave_callback_t slave_callback,int32_t waittime);
-
-`
-
-
-
-
+```
 
 
 
@@ -87,33 +76,28 @@ int modbus_slave_wait_handle(small_modbus_t *smb,small_modbus_slave_callback_t s
 
 ## rtthread平台接口函数：
 
-`
-
+```c
 /*
 *modbus port device
 */
 int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_name);
 small_modbus_port_device_t *modbus_port_device_create(const char *device_name);
 small_modbus_port_device_t *modbus_port_device_get(small_modbus_t *smb);
-
 int modbus_set_rts(small_modbus_t *smb,int (*rts_set)(int on));
 int modbus_set_serial_config(small_modbus_t *smb,struct serial_configure *serial_config);
 int modbus_set_oflag(small_modbus_t *smb,int oflag);
-
 /*
 *modbus port socket
 */
 int modbus_port_socket_init(small_modbus_port_socket_t *port,char *hostname,char *hostport);
 small_modbus_port_socket_t *modbus_port_socket_create(char *hostname,char *hostport);
 small_modbus_port_socket_t *modbus_port_socket_get(small_modbus_t *smb);
-
 /*
 *modbus_init
 */
 int modbus_init(small_modbus_t *smb,uint8_t core_type,void *port);
 small_modbus_t *modbus_create(uint8_t core_type,void *port);
-
-`
+```
 
 
 
