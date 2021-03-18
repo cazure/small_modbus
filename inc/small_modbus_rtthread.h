@@ -8,14 +8,6 @@
 #include "small_modbus_rtu.h"
 #include "small_modbus_tcp.h"
 
-#ifdef RT_USING_DFS
-#include <dfs_fs.h>
-#include <dfs_posix.h>
-#include <dfs_posix.h>
-#include <sys/time.h>
-#include <dfs_select.h>
-#include <sal_socket.h>
-#endif
 
 typedef struct _small_modbus_port_device   small_modbus_port_device_t;
 
