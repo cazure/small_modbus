@@ -51,10 +51,19 @@ int modbus_write_registers(small_modbus_t *smb, int addr, int num,uint16_t *writ
 int modbus_mask_write_register(small_modbus_t *smb, int addr, uint16_t and_mask, uint16_t or_mask);
 int modbus_write_and_read_registers(small_modbus_t *smb, int write_addr, int write_nb,uint16_t *src, int read_addr, int read_nb,uint16_t *dest);
 
-
 /* slave callback */
 typedef int(*small_modbus_slave_callback_t)(small_modbus_t *smb,int function_code,int addr,int num,void *read_write_data);
 
+/* slave mode api */
+/* slave wait query data */
+int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime);
+/* slave handle query data for callback */
+int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_len,small_modbus_slave_callback_t slave_callback);
+/* slave wait and handle query for callback */
+int modbus_slave_wait_handle(small_modbus_t *smb,small_modbus_slave_callback_t slave_callback,int32_t waittime);
+
+//#define MODBUS_SLAVE_MAPPING_TABLE
+#ifdef MODBUS_SLAVE_MAPPING_TABLE
 /* slave mapping table */
 typedef struct _small_modbus_slave_mapping	small_modbus_slave_mapping_t;
 
@@ -99,18 +108,10 @@ reg_start,reg_num,input_reg_start,input_reg_num) \
         input_reg_start,    input_reg_num,      _##map##_input_reg_array\
     );\
 }
-
-/* slave mode api */
-/* slave wait query data */
-int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime);
-/* slave handle query data for callback */
-int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_len,small_modbus_slave_callback_t slave_callback);
-/* slave wait and handle query for callback */
-int modbus_slave_wait_handle(small_modbus_t *smb,small_modbus_slave_callback_t slave_callback,int32_t waittime);
 /* slave handle query data for mapping */
 int modbus_slave_handle_mapping(small_modbus_t *smb,uint8_t *request,uint16_t request_len,small_modbus_slave_mapping_t * slave_mapping_tab);
 /* slave wait and handle query for mapping */
 int modbus_slave_wait_handle_mapping(small_modbus_t *smb,small_modbus_slave_mapping_t * slave_mapping_tab,int32_t waittime);
-
+#endif
 
 #endif /* _SMALL_MODBUS_H_ */

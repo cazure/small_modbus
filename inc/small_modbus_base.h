@@ -116,11 +116,15 @@ enum portType
  */
 #define MODBUS_MAX_ADU_LENGTH              260
 
-//#define MODBUS_BROADCAST_ADDRESS 0xFF
+/*
+*bit max 2000
+*reg max 125
+ */
+#define MODBUS_MAX_SWAP_LENGTH             250 //data length
 
 typedef struct _small_modbus        small_modbus_t;
-typedef struct _small_modbus_core   small_modbus_core_t;
-typedef struct _small_modbus_port   small_modbus_port_t;
+typedef struct _small_modbus_core   small_modbus_core_t; //modbus处理核心 rtu tcp 
+typedef struct _small_modbus_port   small_modbus_port_t; //modbus端口
 
 struct _small_modbus_core
 {
@@ -148,20 +152,20 @@ struct _small_modbus_port
 
 struct _small_modbus
 {
-	uint8_t			mode;  //
-	uint8_t     slave_addr;
+	uint8_t			mode;
+	uint8_t     slave_addr;				//从机地址
 	uint8_t     debug_level;
 	uint16_t    transfer_id;
 	uint16_t    protocol_id;
 	
 	int         status;
 	int         error_code;
-	uint32_t		timeout_frame;
-	uint32_t		timeout_byte;
-	uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];
-	uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];
-	small_modbus_core_t *core;
-	small_modbus_port_t *port;
+	uint32_t		timeout_frame;				//帧超时时间ms
+	uint32_t		timeout_byte;				//字节超时时间ms
+	uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];  //modbus读缓冲区
+	uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];  //modbus写缓冲区
+	small_modbus_core_t *core;		//modbus处理核心 rtu tcp 
+	small_modbus_port_t *port;		//modbus端口
 };
 
 int _modbus_init(small_modbus_t *smb);
