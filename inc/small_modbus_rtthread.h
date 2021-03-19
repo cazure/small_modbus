@@ -5,8 +5,6 @@
 #include <rtdevice.h>
 #include "string.h"
 #include "small_modbus.h"
-#include "small_modbus_rtu.h"
-#include "small_modbus_tcp.h"
 
 
 typedef struct _small_modbus_port_device   small_modbus_port_device_t;

@@ -4,6 +4,7 @@
  * 2020-08-21     chenbin      small modbus the first version
  */
 #include "small_modbus_tcp.h"
+#include "small_modbus_utils.h"
 
 /* Builds a TCP request header */
 static int _tcp_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
