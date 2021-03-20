@@ -73,8 +73,8 @@ typedef enum
 	
 	NETSOCKET_CMD_HOSTNAME_SET =			0x21,
 	NETSOCKET_CMD_HOSTNAME_GET =			0x22,
-	NETSOCKET_CMD_HOSTPORT_SET =			0x23,
-	NETSOCKET_CMD_HOSTPORT_GET =			0x24,
+	NETSOCKET_CMD_PORTNAME_SET =			0x23,
+	NETSOCKET_CMD_PORTNAME_GET =			0x24,
 }netsocket_cmd_t;
 
 typedef union
@@ -101,7 +101,7 @@ static void netdevice_config_init(void)
 	val = NETSOCKET_PROTOCOL_TCP;
 	rt_device_control(socket0_dev,NETSOCKET_CMD_PROTOCOL_SET,&val);
 	
-	val = NETSOCKET_TYPE_SERVER;
+	val = NETSOCKET_TYPE_SERVER;  //服务端
 	rt_device_control(socket0_dev,NETSOCKET_CMD_TYPE_SET,&val);
 	
 	ip_addr_t ip;
@@ -118,8 +118,6 @@ static void netdevice_config_init(void)
 	rt_device_control(socket0_dev,NETSOCKET_CMD_SPORT_SET,&port);
 }
 
-
-
 #define DO_MASK		0x10000000
 #define DI_MASK		0x20000000
 #define AO_MASK		0x40000000
@@ -130,54 +128,60 @@ static small_modbus_t modbus_slave = {0};
 //#define MODBUS_PRINTF(...) 
 #define MODBUS_PRINTF(...)   modbus_debug((&modbus_slave),__VA_ARGS__)
 
-static uint8_t temp_buff[256];
 
+//从机回调函数,当从机接收到主机的请求(数据校验和地址功能码已经解析完),在这个回调函数内填充数据，返回数据的长度即可
 static int test_modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,int addr,int num,void *read_write_data)
 {
 	int rc = 0;
 	switch(function_code)
 	{
-		case MODBUS_FC_READ_HOLDING_COILS:
+		case MODBUS_FC_READ_HOLDING_COILS:	//读取保持线圈,1bit代表一个线圈
 		{
-			rc = rt_device_read(bio_dev,DO_MASK+addr,temp_buff,num);
-			rc = modbus_array2bit(read_write_data, temp_buff, rc);
+			if((0 <= addr)&&(addr < 10000))	//地址映射，地址从0开始
+			{
+				rc = rt_device_read(bio_dev,DO_MASK+addr,read_write_data,num);  
+			}
 		}break;
-		case MODBUS_FC_READ_INPUTS_COILS:
+		case MODBUS_FC_READ_INPUTS_COILS:	//读取只读线圈,1bit代表一个线圈
 		{
-			rc = rt_device_read(bio_dev,DI_MASK+addr,temp_buff,num);
-			rc = modbus_array2bit(read_write_data, temp_buff, rc);
+			if((10000 <= addr)&&(addr < 20000)) //地址映射，地址从10000开始
+			{
+				addr = addr - 10000;
+				rc = rt_device_read(bio_dev,DI_MASK+addr,read_write_data,num);  
+			}
 		}break;
-		case MODBUS_FC_READ_HOLDING_REGISTERS:
+		case MODBUS_FC_READ_HOLDING_REGISTERS:	//读取保持寄存器,16bit代表一个寄存器
 		{
-			rc = rt_device_read(bio_dev,AO_MASK+addr,temp_buff,num);
-			rc = modbus_array2reg(read_write_data, temp_buff, rc);
+			if((40000 <= addr)&&(addr < 50000)) //地址映射，地址从40000开始
+			{
+				addr = addr - 40000;
+				rc = rt_device_read(bio_dev,AO_MASK+addr,read_write_data,num);  
+			}
 		}break;
-		case MODBUS_FC_READ_INPUT_REGISTERS:
+		case MODBUS_FC_READ_INPUT_REGISTERS:	//读取输入寄存器,16bit代表一个寄存器
 		{
-			rc = rt_device_read(bio_dev,AI_MASK+addr,temp_buff,num);
-			rc = modbus_array2reg(read_write_data, temp_buff, rc);
+			if((30000 <= addr)&&(addr < 40000)) //地址映射，地址从30000开始
+			{
+				addr = addr - 30000;
+				rc = rt_device_read(bio_dev,AI_MASK+addr,read_write_data,num);  
+			}
 		}break;
-		
-		case MODBUS_FC_WRITE_SINGLE_COIL:
+		case MODBUS_FC_WRITE_SINGLE_COIL:	//写单个线圈,1bit代表一个线圈
+		case MODBUS_FC_WRITE_MULTIPLE_COILS:		//写线圈,1bit代表一个线圈
 		{
-			uint8_t value1 = num?1:0;
-			rc = rt_device_write(bio_dev,DO_MASK+addr,&value1,1);
+			if((0 <= addr)&&(addr < 10000))	//地址映射，地址从0开始
+			{
+				rc = rt_device_write(bio_dev,DO_MASK+addr,read_write_data,num);
+			}
 		}break;
-		case MODBUS_FC_WRITE_SINGLE_REGISTER:
-		{
-			uint16_t value2 = num;
-			rc = rt_device_write(bio_dev,AO_MASK+addr,&value2,1);
-		}break;
-		
-		case MODBUS_FC_WRITE_MULTIPLE_COILS:
-		{
-			rc = modbus_bit2array(temp_buff,read_write_data,num);
-			rc = rt_device_write(bio_dev,DO_MASK+addr,temp_buff,num);
-		}break;
-		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
-		{
-			rc = modbus_reg2array(temp_buff,read_write_data,num);
-			rc = rt_device_write(bio_dev,AO_MASK+addr,temp_buff,num);
+		case MODBUS_FC_WRITE_SINGLE_REGISTER:	//写单个寄存器,16bit代表一个寄存器
+		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:	//写寄存器,16bit代表一个寄存器
+		{	
+			if((40000 <= addr)&&(addr < 50000))	//地址映射，地址从40000开始
+			{
+				addr = addr - 40000;
+				rc = rt_device_write(bio_dev,AO_MASK+addr,read_write_data,num);
+			}
 		}break;
 	}	
 	if(rc<0)
@@ -192,6 +196,9 @@ static void test_modbus_rtu_slave_thread(void *param)
 	int rc = 0;
 	int count = 0;
 	small_modbus_t *smb_slave = param;
+	
+	bio_dev = rt_device_find("bio");
+	rt_device_open(bio_dev,0);
 	
 	netdevice_config_init();
 	
@@ -222,9 +229,6 @@ static void test_modbus_rtu_slave_thread(void *param)
 int test_modbus_rtu_slave_netdevice(void)
 {
 	rt_thread_t tid;
-	
-	bio_dev = rt_device_find("bio");
-	rt_device_open(bio_dev,0);
 	
 	tid = rt_thread_create("slave1",test_modbus_rtu_slave_thread, &modbus_slave,2048,20, 10);
 	if (tid != RT_NULL)

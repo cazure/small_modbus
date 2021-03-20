@@ -2,10 +2,15 @@
 #define _SMALL_MODBUS_RTTHREAD_H_
 
 #include <rtthread.h>
-#include <rtdevice.h>
 #include "string.h"
 #include "small_modbus.h"
 
+/*
+*modbus port device
+*/
+#define SMALL_MODBUS_RTTHREAD_USE_DEVICDE 
+#ifdef SMALL_MODBUS_RTTHREAD_USE_DEVICDE
+#include <rtdevice.h>
 
 typedef struct _small_modbus_port_device   small_modbus_port_device_t;
 
@@ -21,6 +26,21 @@ struct _small_modbus_port_device
   int 		(*rts_set)(int on);
 };
 
+int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_name);
+small_modbus_port_device_t *modbus_port_device_create(const char *device_name);
+small_modbus_port_device_t *modbus_port_device_get(small_modbus_t *smb);
+
+int modbus_set_rts(small_modbus_t *smb,int (*rts_set)(int on));
+int modbus_set_serial_config(small_modbus_t *smb,struct serial_configure *serial_config);
+int modbus_set_oflag(small_modbus_t *smb,int oflag);
+
+#endif
+
+/*
+*modbus port socket
+*/
+//#define SMALL_MODBUS_RTTHREAD_USE_SOCKET
+#ifdef SMALL_MODBUS_RTTHREAD_USE_SOCKET
 
 typedef struct _small_modbus_port_socket   small_modbus_port_socket_t;
 
@@ -34,23 +54,11 @@ struct _small_modbus_port_socket
 	int32_t     socket_fd;
 };
 
-/*
-*modbus port device
-*/
-int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_name);
-small_modbus_port_device_t *modbus_port_device_create(const char *device_name);
-small_modbus_port_device_t *modbus_port_device_get(small_modbus_t *smb);
-
-int modbus_set_rts(small_modbus_t *smb,int (*rts_set)(int on));
-int modbus_set_serial_config(small_modbus_t *smb,struct serial_configure *serial_config);
-int modbus_set_oflag(small_modbus_t *smb,int oflag);
-
-/*
-*modbus port socket
-*/
 int modbus_port_socket_init(small_modbus_port_socket_t *port,char *hostname,char *hostport);
 small_modbus_port_socket_t *modbus_port_socket_create(char *hostname,char *hostport);
 small_modbus_port_socket_t *modbus_port_socket_get(small_modbus_t *smb);
+
+#endif
 
 /*
 *modbus_init

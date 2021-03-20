@@ -13,57 +13,57 @@ static small_modbus_t modbus_slave = {0};
 //#define MODBUS_PRINTF(...) 
 #define MODBUS_PRINTF(...)   modbus_debug((&modbus_slave),__VA_ARGS__)
 
-//ä»æœºå›è°ƒå‡½æ•°,å½“ä»æœºæ¥æ”¶åˆ°ä¸»æœºçš„è¯·æ±‚(æ•°æ®æ ¡éªŒå’Œåœ°å€åŠŸèƒ½ç å·²ç»è§£æå®Œ),åœ¨è¿™ä¸ªå›è°ƒå‡½æ•°å†…å¡«å……æ•°æ®ï¼Œè¿”å›æ•°æ®çš„é•¿åº¦å³å¯
+//´Ó»ú»Øµ÷º¯Êı,µ±´Ó»ú½ÓÊÕµ½Ö÷»úµÄÇëÇó(Êı¾İĞ£ÑéºÍµØÖ·¹¦ÄÜÂëÒÑ¾­½âÎöÍê),ÔÚÕâ¸ö»Øµ÷º¯ÊıÄÚÌî³äÊı¾İ£¬·µ»ØÊı¾İµÄ³¤¶È¼´¿É
 static int test_modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,int addr,int num,void *read_write_data)
 {
 	int rc = 0;
 	switch(function_code)
 	{
-		case MODBUS_FC_READ_HOLDING_COILS:	//è¯»å–ä¿æŒçº¿åœˆ,1bitä»£è¡¨ä¸€ä¸ªçº¿åœˆ
+		case MODBUS_FC_READ_HOLDING_COILS:	//¶ÁÈ¡±£³ÖÏßÈ¦,1bit´ú±íÒ»¸öÏßÈ¦
 		{
-			if((0 <= addr)&&(addr < 10000))	//åœ°å€æ˜ å°„ï¼Œåœ°å€ä»0å¼€å§‹
+			if((0 <= addr)&&(addr < 10000))	//µØÖ·Ó³Éä£¬µØÖ·´Ó0¿ªÊ¼
 			{
 				rc = rt_device_read(bio_dev,DO_MASK+addr,read_write_data,num);  
 			}
 		}break;
-		case MODBUS_FC_READ_INPUTS_COILS:	//è¯»å–åªè¯»çº¿åœˆ,1bitä»£è¡¨ä¸€ä¸ªçº¿åœˆ
+		case MODBUS_FC_READ_INPUTS_COILS:	//¶ÁÈ¡Ö»¶ÁÏßÈ¦,1bit´ú±íÒ»¸öÏßÈ¦
 		{
-			if((10000 <= addr)&&(addr < 20000)) //åœ°å€æ˜ å°„ï¼Œåœ°å€ä»10000å¼€å§‹
+			if((10000 <= addr)&&(addr < 20000)) //µØÖ·Ó³Éä£¬µØÖ·´Ó10000¿ªÊ¼
 			{
 				addr = addr - 10000;
 				rc = rt_device_read(bio_dev,DI_MASK+addr,read_write_data,num);  
 			}
 		}break;
-		case MODBUS_FC_READ_HOLDING_REGISTERS:	//è¯»å–ä¿æŒå¯„å­˜å™¨,16bitä»£è¡¨ä¸€ä¸ªå¯„å­˜å™¨
+		case MODBUS_FC_READ_HOLDING_REGISTERS:	//¶ÁÈ¡±£³Ö¼Ä´æÆ÷,16bit´ú±íÒ»¸ö¼Ä´æÆ÷
 		{
-			if((20000 <= addr)&&(addr < 30000)) //åœ°å€æ˜ å°„ï¼Œåœ°å€ä»20000å¼€å§‹
+			if((40000 <= addr)&&(addr < 50000)) //µØÖ·Ó³Éä£¬µØÖ·´Ó40000¿ªÊ¼
 			{
-				addr = addr - 20000;
+				addr = addr - 40000;
 				rc = rt_device_read(bio_dev,AO_MASK+addr,read_write_data,num);  
 			}
 		}break;
-		case MODBUS_FC_READ_INPUT_REGISTERS:	//è¯»å–è¾“å…¥å¯„å­˜å™¨,16bitä»£è¡¨ä¸€ä¸ªå¯„å­˜å™¨
+		case MODBUS_FC_READ_INPUT_REGISTERS:	//¶ÁÈ¡ÊäÈë¼Ä´æÆ÷,16bit´ú±íÒ»¸ö¼Ä´æÆ÷
 		{
-			if((30000 <= addr)&&(addr < 40000)) //åœ°å€æ˜ å°„ï¼Œåœ°å€ä»30000å¼€å§‹
+			if((30000 <= addr)&&(addr < 40000)) //µØÖ·Ó³Éä£¬µØÖ·´Ó30000¿ªÊ¼
 			{
 				addr = addr - 30000;
 				rc = rt_device_read(bio_dev,AI_MASK+addr,read_write_data,num);  
 			}
 		}break;
-		case MODBUS_FC_WRITE_SINGLE_COIL:	//å†™å•ä¸ªçº¿åœˆ,1bitä»£è¡¨ä¸€ä¸ªçº¿åœˆ
-		case MODBUS_FC_WRITE_MULTIPLE_COILS:		//å†™çº¿åœˆ,1bitä»£è¡¨ä¸€ä¸ªçº¿åœˆ
+		case MODBUS_FC_WRITE_SINGLE_COIL:	//Ğ´µ¥¸öÏßÈ¦,1bit´ú±íÒ»¸öÏßÈ¦
+		case MODBUS_FC_WRITE_MULTIPLE_COILS:		//Ğ´ÏßÈ¦,1bit´ú±íÒ»¸öÏßÈ¦
 		{
-			if((0 <= addr)&&(addr < 10000))	//åœ°å€æ˜ å°„ï¼Œåœ°å€ä»0å¼€å§‹
+			if((0 <= addr)&&(addr < 10000))	//µØÖ·Ó³Éä£¬µØÖ·´Ó0¿ªÊ¼
 			{
 				rc = rt_device_write(bio_dev,DO_MASK+addr,read_write_data,num);
 			}
 		}break;
-		case MODBUS_FC_WRITE_SINGLE_REGISTER:	//å†™å•ä¸ªå¯„å­˜å™¨,16bitä»£è¡¨ä¸€ä¸ªå¯„å­˜å™¨
-		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:	//å†™å¯„å­˜å™¨,16bitä»£è¡¨ä¸€ä¸ªå¯„å­˜å™¨
+		case MODBUS_FC_WRITE_SINGLE_REGISTER:	//Ğ´µ¥¸ö¼Ä´æÆ÷,16bit´ú±íÒ»¸ö¼Ä´æÆ÷
+		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:	//Ğ´¼Ä´æÆ÷,16bit´ú±íÒ»¸ö¼Ä´æÆ÷
 		{	
-			if((20000 <= addr)&&(addr < 30000))	//åœ°å€æ˜ å°„ï¼Œåœ°å€ä»20000å¼€å§‹
+			if((40000 <= addr)&&(addr < 50000))	//µØÖ·Ó³Éä£¬µØÖ·´Ó40000¿ªÊ¼
 			{
-				addr = addr - 20000;
+				addr = addr - 40000;
 				rc = rt_device_write(bio_dev,AO_MASK+addr,read_write_data,num);
 			}
 		}break;
@@ -77,7 +77,8 @@ static int test_modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,
 
 static int uart_rts(int on)
 {
-	board_uart_dir(4,on);//rtsè®¾ç½®
+	board_uart_dir(4,on);//rtsÉèÖÃ
+	board_led_set(1,on);//led ×´Ì¬
 	return 0;
 }
 

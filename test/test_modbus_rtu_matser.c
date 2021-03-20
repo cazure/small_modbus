@@ -7,7 +7,7 @@ static small_modbus_t modbus_master = {0};
 //#define MODBUS_PRINTF(...) 
 #define MODBUS_PRINTF(...)   modbus_debug((&modbus_master),__VA_ARGS__)
 
-static int uart4_rts(int on)
+static int uart_rts(int on)
 {
 	board_uart_dir(4,on);
 	return 0;
@@ -30,25 +30,31 @@ static void test_modbus_rtu_master_thread(void *param)
 	serial_config.parity = PARITY_NONE;
 	modbus_set_serial_config(smb_master,&serial_config);  //config serial 
 	
-	modbus_set_rts(smb_master,uart4_rts);
+	modbus_set_rts(smb_master,uart_rts);
 	
-	//modbus_set_oflag(&modbus_slave,RT_DEVICE_FLAG_INT_RX);
-	modbus_set_oflag(smb_master,RT_DEVICE_FLAG_DMA_RX);
+	modbus_set_oflag(smb_master,RT_DEVICE_FLAG_INT_RX);
+	//modbus_set_oflag(smb_master,RT_DEVICE_FLAG_DMA_RX);
 	
 	modbus_connect(smb_master);
 	rt_kprintf("modbus master\n");
 	
 	int count_ok = 0;
 	int count_err = 0;
+	int index = 0;
 	while (1)
 	{
 		rt_thread_mdelay(30);
 		modbus_error_recovery(smb_master);
 		modbus_set_slave(smb_master, 1);
-		rc = modbus_read_input_bits(smb_master, 0, 8, temp_buff); // modbus_read_input_bits
+		rc = modbus_read_input_bits(smb_master, 10000, 8, temp_buff); // modbus_read_input_bits
 		rt_kprintf("modbus_read_input_bits:%d\n",rc);
 		if(rc >= MODBUS_OK)
 		{
+			for(index = 0; index <8;index++)
+			{
+				rt_kprintf("[%d]",dio_get_val(temp_buff,index));
+			}
+			rt_kputs("\n\r");
 			count_ok++;
 		}else
 		{
@@ -58,7 +64,7 @@ static void test_modbus_rtu_master_thread(void *param)
 		rt_thread_mdelay(30);
 		modbus_error_recovery(smb_master);
 		modbus_set_slave(smb_master, 1);
-		rc = modbus_write_bits(smb_master, 0 , 8, temp_buff); // modbus_write_bits
+		rc = modbus_write_bits(smb_master, 00000 , 8, temp_buff); // modbus_write_bits
 		rt_kprintf("modbus_write_bits:%d\n",rc);
 		if(rc >= MODBUS_OK)
 		{
@@ -71,10 +77,15 @@ static void test_modbus_rtu_master_thread(void *param)
 		rt_thread_mdelay(30);
 		modbus_error_recovery(smb_master);
 		modbus_set_slave(smb_master, 1);
-		rc = modbus_read_bits(smb_master, 0 , 8, temp_buff); // modbus_read_bits
+		rc = modbus_read_bits(smb_master, 00000 , 8, temp_buff); // modbus_read_bits
 		rt_kprintf("modbus_read_bits:%d\n",rc);
 		if(rc >= MODBUS_OK)
 		{
+			for(index = 0; index <8;index++)
+			{
+				rt_kprintf("[%d]",dio_get_val(temp_buff,index));
+			}
+			rt_kputs("\n\r");
 			count_ok++;
 		}else
 		{
@@ -85,10 +96,15 @@ static void test_modbus_rtu_master_thread(void *param)
 		rt_thread_mdelay(30);
 		modbus_error_recovery(smb_master);
 		modbus_set_slave(smb_master, 1);
-		rc = modbus_read_input_registers(smb_master, 0 , 8, (uint16_t*)temp_buff);  // modbus_read_input_registers
+		rc = modbus_read_input_registers(smb_master, 30000 , 8, (uint16_t*)temp_buff);  // modbus_read_input_registers
 		rt_kprintf("modbus_read_input_registers:%d\n",rc);
 		if(rc >= MODBUS_OK)
 		{
+			for(index = 0; index <8;index++)
+			{
+				rt_kprintf("[%d]",aio_get_val((uint16_t*)temp_buff,index));
+			}
+			rt_kputs("\n\r");
 			count_ok++;
 		}else
 		{
@@ -98,7 +114,7 @@ static void test_modbus_rtu_master_thread(void *param)
 		rt_thread_mdelay(30);
 		modbus_error_recovery(smb_master);
 		modbus_set_slave(smb_master, 1);
-		rc = modbus_write_registers(smb_master, 0 , 8, (uint16_t*)temp_buff); // modbus_write_registers
+		rc = modbus_write_registers(smb_master, 40000 , 8, (uint16_t*)temp_buff); // modbus_write_registers
 		rt_kprintf("modbus_write_registers:%d\n",rc);
 		if(rc >= MODBUS_OK)
 		{
@@ -111,10 +127,15 @@ static void test_modbus_rtu_master_thread(void *param)
 		rt_thread_mdelay(30);
 		modbus_error_recovery(smb_master);
 		modbus_set_slave(smb_master, 1);
-		rc = modbus_read_registers(smb_master, 0 , 8, (uint16_t*)temp_buff); // modbus_read_registers
+		rc = modbus_read_registers(smb_master, 40000 , 8, (uint16_t*)temp_buff); // modbus_read_registers
 		rt_kprintf("modbus_read_registers:%d\n",rc);
 		if(rc >= MODBUS_OK)
 		{
+			for(index = 0; index <8;index++)
+			{
+				rt_kprintf("[%d]",aio_get_val((uint16_t*)temp_buff,index));
+			}
+			rt_kputs("\n\r");
 			count_ok++;
 		}else
 		{

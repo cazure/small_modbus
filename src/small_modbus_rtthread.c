@@ -24,6 +24,12 @@ int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 	return 0;
 }
 
+
+/*
+*modbus port device
+*/
+#ifdef SMALL_MODBUS_RTTHREAD_USE_DEVICDE
+
 static rt_err_t _modbus_rtdevice_rx_indicate(rt_device_t dev, rt_size_t size)
 {
 	small_modbus_port_device_t *smb_port_device = dev->user_data;
@@ -114,19 +120,6 @@ static int _modbus_rtdevice_wait(small_modbus_t *smb,int timeout)
 	}
 	return rc;
 }
-/*
-*modbus port device
-*/
-//small_modbus_port_t _port_device_default = 
-//{
-//	.type = MODBUS_PORT_DEVICE,
-//	.open = _modbus_rtdevice_open,
-//	.close = _modbus_rtdevice_close,
-//	.read = _modbus_rtdevice_read,
-//	.write = _modbus_rtdevice_write,
-//	.flush = _modbus_rtdevice_flush,
-//	.wait = _modbus_rtdevice_wait
-//};
 int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_name)
 {
 	//rt_memcpy(&port->base,&_port_device_default,sizeof(small_modbus_port_t));
@@ -198,20 +191,13 @@ int modbus_set_oflag(small_modbus_t *smb,int oflag)
 	return 0;
 }
 
+#endif
 
 /*
 *modbus port socket
 */
-//small_modbus_port_t _port_socket_default = 
-//{
-//	.type = MODBUS_PORT_SOCKET,
-//	.open = _modbus_rtdevice_open,
-//	.close = _modbus_rtdevice_close,
-//	.read = _modbus_rtdevice_read,
-//	.write = _modbus_rtdevice_write,
-//	.flush = _modbus_rtdevice_flush,
-//	.wait = _modbus_rtdevice_wait
-//};
+#ifdef SMALL_MODBUS_RTTHREAD_USE_SOCKET
+
 int modbus_port_socket_init(small_modbus_port_socket_t *port,char *hostname,char *hostport)
 {
 //	rt_memcpy(&port->base,&_port_socket_default,sizeof(small_modbus_port_t));
@@ -253,6 +239,7 @@ small_modbus_port_socket_t * modbus_port_socket_get(small_modbus_t *smb)
 	return NULL;
 }
 
+#endif
 
 /*
 *modbus_init
@@ -302,37 +289,4 @@ small_modbus_t *modbus_create(uint8_t core_type,void *port)
 	}
 	return NULL;
 }
-
-//int modbus_rtu_init(small_modbus_t *smb,void *port)
-//{
-//	small_modbus_port_t *smb_port;
-//	if(smb&&port)
-//	{
-//		_modbus_init(smb);
-//		smb->core = (small_modbus_core_t*)&_modbus_rtu_core;
-//		
-//		smb_port = port;
-//		if((smb_port->type == MODBUS_PORT_DEVICE)||(smb_port->type == MODBUS_PORT_SOCKET))
-//		{
-//			smb->port = smb_port;
-//		}
-//	}
-//	return 0;
-//}
-//int modbus_tcp_init(small_modbus_t *smb,void *port)
-//{
-//	small_modbus_port_t *smb_port;
-//	if(smb&&port)
-//	{
-//		_modbus_init(smb);
-//		smb->core = (small_modbus_core_t*)&_modbus_tcp_core;
-//		
-//		smb_port = port;
-//		if((smb_port->type == MODBUS_PORT_DEVICE)||(smb_port->type == MODBUS_PORT_SOCKET))
-//		{
-//			smb->port = smb_port;
-//		}
-//	}
-//	return 0;
-//}
 

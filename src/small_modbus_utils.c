@@ -185,6 +185,38 @@ void modbus_reg_m2h(void *dest_host,void *source_modbus_reg,int reg_num)
 	}while(--reg_num);
 }
 
+
+int dio_get_val(uint8_t *array,uint16_t index)
+{
+	uint8_t offset_bit = (index & 0x07); //(index%8);  //
+	uint8_t offset_arr = (index >> 0x03); //(index/8);  //
+	return (array[offset_arr] & (0x01 << offset_bit))?1:0;
+}
+
+void dio_set_val(uint8_t *array,uint16_t index,int status)
+{
+	uint8_t offset_bit = (index & 0x07); //(index%8);  //
+	uint8_t offset_arr = (index >> 0x03); //(index/8);  //
+	if(status)
+	{
+		array[offset_arr] |= (0x01 << offset_bit);
+	}else
+	{
+		array[offset_arr] &= ~(0x01 << offset_bit);
+	}
+}
+
+int aio_get_val(uint16_t *array,uint16_t index)
+{
+	return array[index];
+}
+
+void aio_set_val(uint8_t *array,uint16_t index,int status)
+{
+	array[index] = status;
+}
+
+
 static inline uint16_t bswap_16(uint16_t x)
 {
     return (x >> 8) | (x << 8);

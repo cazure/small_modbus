@@ -5,7 +5,7 @@ cwd = GetCurrentDir()
 
 src = Glob('src/*.c')
 
-path = cwd
+path = [cwd]
 path += [cwd + '/inc']
 
 if GetDepend(['SMALL_MODBUS_RTOS_HWPORT']):
