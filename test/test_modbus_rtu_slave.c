@@ -75,9 +75,11 @@ static int test_modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,
 	return rc;
 }
 
+#define UART_DEVICE_NAME "uart3"
+
 static int uart_rts(int on)
 {
-	board_uart_dir(4,on);//rts…Ë÷√
+	board_uart_dir(3,on);//rts…Ë÷√
 	board_led_set(1,on);//led ◊¥Ã¨
 	return 0;
 }
@@ -91,7 +93,8 @@ static void test_modbus_rtu_slave_thread(void *param)
 	bio_dev = rt_device_find("bio");
 	rt_device_open(bio_dev,0);
 	
-	modbus_init(smb_slave,MODBUS_CORE_RTU,modbus_port_device_create("uart4")); // init modbus
+	modbus_init(smb_slave,MODBUS_CORE_RTU,modbus_port_device_create(UART_DEVICE_NAME)); // init modbus  RTU mode
+	//modbus_init(smb_slave,MODBUS_CORE_TCP,modbus_port_device_create(UART_DEVICE_NAME)); // init modbus  TCP mode
 	
 	struct serial_configure serial_config;
 	serial_config.baud_rate = BAUD_RATE_9600;
@@ -103,8 +106,8 @@ static void test_modbus_rtu_slave_thread(void *param)
 	
 	modbus_set_rts(smb_slave,uart_rts);
 	
-	//modbus_set_oflag(&modbus_slave,RT_DEVICE_FLAG_INT_RX);
-	modbus_set_oflag(smb_slave,RT_DEVICE_FLAG_DMA_RX);
+	modbus_set_oflag(smb_slave,RT_DEVICE_FLAG_INT_RX);
+	//modbus_set_oflag(smb_slave,RT_DEVICE_FLAG_DMA_RX);
 	
 	modbus_set_slave(smb_slave,1); //set slave addr
 	

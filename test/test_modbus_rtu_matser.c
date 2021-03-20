@@ -7,9 +7,12 @@ static small_modbus_t modbus_master = {0};
 //#define MODBUS_PRINTF(...) 
 #define MODBUS_PRINTF(...)   modbus_debug((&modbus_master),__VA_ARGS__)
 
+#define UART_DEVICE_NAME "uart3"
+
 static int uart_rts(int on)
 {
-	board_uart_dir(4,on);
+	board_uart_dir(3,on);//rts…Ë÷√
+	board_led_set(1,on);//led ◊¥Ã¨
 	return 0;
 }
 
@@ -20,7 +23,8 @@ static void test_modbus_rtu_master_thread(void *param)
 	int rc = 0;	
 	small_modbus_t *smb_master = param;
 	
-	modbus_init(smb_master,MODBUS_CORE_RTU,modbus_port_device_create("uart4")); // init modbus
+	modbus_init(smb_master,MODBUS_CORE_RTU,modbus_port_device_create(UART_DEVICE_NAME)); // init modbus  RTU mode
+	//modbus_init(smb_master,MODBUS_CORE_TCP,modbus_port_device_create(UART_DEVICE_NAME)); // init modbus  TCP mode
 	
 	struct serial_configure serial_config;
 	serial_config.baud_rate = BAUD_RATE_9600;
