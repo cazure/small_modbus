@@ -8,60 +8,68 @@
 extern int board_gpio_init(void);
 extern int board_adc_init(void);
 
+int dio_get_val(uint8_t *array,uint16_t index)
+{
+	uint8_t offset_bit = (index & 0x07); //(index%8);  //
+	uint8_t offset_arr = (index >> 0x03); //(index/8);  //
+	return (array[offset_arr] & (0x01 << offset_bit))?1:0;
+}
+
+void dio_set_val(uint8_t *array,uint16_t index,int status)
+{
+	uint8_t offset_bit = (index & 0x07); //(index%8);  //
+	uint8_t offset_arr = (index >> 0x03); //(index/8);  //
+	if(status)
+	{
+		array[offset_arr] |= (0x01 << offset_bit);
+	}else
+	{
+		array[offset_arr] &= ~(0x01 << offset_bit);
+	}
+}
+
 #define DI_MAX 64
 static uint8_t DI_arr[8] = {0};
 
 #define DO_MAX 64
 static uint8_t DO_arr[8] = {0};
 
-int dio_get_val(uint8_t *array,uint16_t index)
-{
-	uint8_t offset = (index & 0x0F); //(index%8);
-	array += (index >> 0x04); //(index/8);
-	return ((*array) & (0x01 << offset))?1:0;
-}
-
-void dio_set_val(uint8_t *array,uint16_t index,int status)
-{
-	uint8_t offset = (index & 0x0F); //(index%8);
-	array += (index >> 0x04); //(index/8);
-	if(status)
-	{
-		*array |= (0x01 << offset);
-	}else
-	{
-		*array &= (!(0x01 << offset));
-	}
-}
-
-
 void do_batch(uint8_t *array,uint16_t start_addr,uint16_t end_addr)
 {
 	switch(start_addr)
 	{
-		case 0: board_out_set(0,dio_get_val(array,0)); if(end_addr == 0){break;}
-		case 1: board_out_set(1,dio_get_val(array,1)); if(end_addr == 1){break;}
-		case 2: board_out_set(2,dio_get_val(array,2)); if(end_addr == 2){break;}
-		case 3: board_out_set(3,dio_get_val(array,3)); if(end_addr == 3){break;}
-		case 4: board_out_set(4,dio_get_val(array,4)); if(end_addr == 4){break;}
-		case 5: board_out_set(5,dio_get_val(array,5)); if(end_addr == 5){break;}
-		case 6: board_out_set(6,dio_get_val(array,6)); if(end_addr == 6){break;}
-		case 7: board_out_set(7,dio_get_val(array,7)); if(end_addr == 7){break;}
+		case 0: board_out_set(0,dio_get_val(array,0)); if(end_addr == 1){break;}
+		case 1: board_out_set(1,dio_get_val(array,1)); if(end_addr == 2){break;}
+		case 2: board_out_set(2,dio_get_val(array,2)); if(end_addr == 3){break;}
+		case 3: board_out_set(3,dio_get_val(array,3)); if(end_addr == 4){break;}
+		case 4: board_out_set(4,dio_get_val(array,4)); if(end_addr == 5){break;}
+		case 5: board_out_set(5,dio_get_val(array,5)); if(end_addr == 6){break;}
+		case 6: board_out_set(6,dio_get_val(array,6)); if(end_addr == 7){break;}
+		case 7: board_out_set(7,dio_get_val(array,7)); if(end_addr == 8){break;}
 	}
 }
 
 void di_batch(uint8_t *array,uint16_t start_addr,uint16_t end_addr)
 {
+	int status = 0;
 	switch(start_addr)
 	{
-		case 0: dio_set_val(array,0,board_in_get(0)); if(end_addr == 0){break;}
-		case 1: dio_set_val(array,1,board_in_get(1)); if(end_addr == 1){break;}
-		case 2: dio_set_val(array,2,board_in_get(2)); if(end_addr == 2){break;}
-		case 3: dio_set_val(array,3,board_in_get(3)); if(end_addr == 3){break;}
-		case 4: dio_set_val(array,4,board_in_get(4)); if(end_addr == 4){break;}
-		case 5: dio_set_val(array,5,board_in_get(5)); if(end_addr == 5){break;}
-		case 6: dio_set_val(array,6,board_in_get(6)); if(end_addr == 6){break;}
-		case 7: dio_set_val(array,7,board_in_get(7)); if(end_addr == 7){break;}
+		case 0: dio_set_val(array,0,board_in_get(0)); if(end_addr == 1){break;}
+		case 1:	dio_set_val(array,1,board_in_get(1));	if(end_addr == 2){break;}
+		case 2: dio_set_val(array,2,board_in_get(2)); if(end_addr == 3){break;}
+		case 3: dio_set_val(array,3,board_in_get(3)); if(end_addr == 4){break;}
+		case 4: dio_set_val(array,4,board_in_get(4)); if(end_addr == 5){break;}
+		case 5: dio_set_val(array,5,board_in_get(5)); if(end_addr == 6){break;}
+		case 6: dio_set_val(array,6,board_in_get(6)); if(end_addr == 7){break;}
+		case 7: dio_set_val(array,7,board_in_get(7)); if(end_addr == 8){break;}
+		case 8: dio_set_val(array,8,board_in_get(8)); if(end_addr == 9){break;}
+		case 9: dio_set_val(array,9,board_in_get(9)); if(end_addr == 10){break;}
+		case 10: dio_set_val(array,10,board_in_get(10)); if(end_addr == 11){break;}
+		case 11: dio_set_val(array,11,board_in_get(11)); if(end_addr == 12){break;}
+		case 12: dio_set_val(array,12,board_in_get(12)); if(end_addr == 13){break;}
+		case 13: dio_set_val(array,13,board_in_get(13)); if(end_addr == 14){break;}
+		case 14: dio_set_val(array,14,board_in_get(14)); if(end_addr == 15){break;}
+		case 15: dio_set_val(array,15,board_in_get(15)); if(end_addr == 16){break;}
 	}
 }
 
@@ -70,6 +78,8 @@ static int read_do(uint16_t addr,uint16_t num,uint8_t *buffer)
 	uint16_t index = 0;
 	uint16_t io_start = 0;
 	uint16_t io_end = 0;
+	int val_old = 0;
+	int val_new = 0;
 	if((0 <= addr)&&(addr < DO_MAX))
 	{ 
 		io_start = addr; 
@@ -80,9 +90,10 @@ static int read_do(uint16_t addr,uint16_t num,uint8_t *buffer)
 		{
 			io_end = addr+num;
 		}
-		while(io_start <= io_end)
+		while(io_start < io_end)
 		{
-			dio_set_val(buffer,index, dio_get_val(DO_arr,io_start) );
+			val_new = dio_get_val(DO_arr,io_start);
+			dio_set_val(buffer,index, val_new );
 			io_start++;
 			index++;
 		}
@@ -95,6 +106,8 @@ static int read_di(uint16_t addr,uint16_t num,uint8_t *buffer)
 	uint16_t index = 0;
 	uint16_t io_start = 0;
 	uint16_t io_end = 0;
+	int val_old = 0;
+	int val_new = 0;
 	if((0 <= addr)&&(addr < DI_MAX))
 	{ 
 		io_start = addr; 
@@ -106,9 +119,10 @@ static int read_di(uint16_t addr,uint16_t num,uint8_t *buffer)
 			io_end = addr+num;
 		}
 		di_batch(DI_arr,io_start,io_end); //Ë¢ĞÂÊäÈë
-		while(io_start <= io_end)
+		while(io_start < io_end)
 		{
-			dio_set_val(buffer,index, dio_get_val(DI_arr,io_start) );
+			val_new = dio_get_val(DI_arr,io_start);
+			dio_set_val(buffer,index,val_new);
 			io_start++;
 			index++;
 		}
@@ -135,7 +149,7 @@ static int write_do(uint16_t addr,uint16_t num,uint8_t *buffer)
 		{
 			io_end = addr+num;
 		}
-		while(io_start <= io_end)
+		while(io_start < io_end)
 		{
 			val_old = dio_get_val(DO_arr,io_start);
 			val_new = dio_get_val(buffer,index);
@@ -173,7 +187,7 @@ static int write_di(uint16_t addr,uint16_t num,uint8_t *buffer)
 		{
 			io_end = addr+num;
 		}
-		while(io_start <= io_end)
+		while(io_start < io_end)
 		{
 			val_old = dio_get_val(DI_arr,io_start);
 			val_new = dio_get_val(buffer,index);
@@ -193,6 +207,16 @@ static int write_di(uint16_t addr,uint16_t num,uint8_t *buffer)
 	return num;
 }
 
+
+int aio_get_val(uint16_t *array,uint16_t index)
+{
+	return array[index];
+}
+
+void aio_set_val(uint8_t *array,uint16_t index,int status)
+{
+	array[index] = status;
+}
 
 #define AI_MAX 16
 static uint16_t AI_arr[AI_MAX] = {0};
@@ -488,45 +512,27 @@ int boardio_get_addr(int tab,int addr)
 	return 0;
 }
 
-int boardio_digital_get_val(uint8_t *array,uint8_t max,uint16_t index)
-{
-	if((index) < max)
-	{
-		return (array[(index/8)] & (0x01 << (index%8)))?1:0;
-	}
-	return -1;
-}
-
-int boardio_analog_get_val(uint16_t *array,uint8_t max,uint16_t index)
-{
-	if((index) < max)
-	{
-		return array[index];
-	}
-	return -1;
-}
-
 void boardio_show(int tab)
 {
 	uint8_t DI_buff[4] = {0};
 	uint8_t DO_buff[4] = {0};
-	uint16_t AI_buff[32] = {0};
-	uint16_t AO_buff[32] = {0};
+	uint16_t AI_buff[16] = {0};
+	uint16_t AO_buff[16] = {0};
 	uint8_t rc_di,rc_do,rc_ai,rc_ao;
 	uint16_t index = 0;
 	if(tab == -1)
 	{
-		rc_do = boardio_read(DO_MASK,32,DO_buff);
-		rc_di = boardio_read(DI_MASK,32,DI_buff);
-		rc_ao = boardio_read(AO_MASK,32,AO_buff);
-		rc_ai = boardio_read(AI_MASK,32,AI_buff);
+		rc_do = boardio_read(DO_MASK,16,DO_buff);
+		rc_di = boardio_read(DI_MASK,16,DI_buff);
+		rc_ao = boardio_read(AO_MASK,16,AO_buff);
+		rc_ai = boardio_read(AI_MASK,16,AI_buff);
 		rt_kprintf("DO\tDI\tAO\tAI\n");
-		for(index=0;index<32;index++)
+		for(index=0;index<16;index++)
 		{
-			rt_kprintf("%d\t",boardio_digital_get_val(DO_buff,rc_do,index));
-			rt_kprintf("%d\t",boardio_digital_get_val(DI_buff,rc_di,index));
-			rt_kprintf("%d\t",boardio_analog_get_val(AO_buff,rc_ao,index));
-			rt_kprintf("%d\t",boardio_analog_get_val(AI_buff,rc_ai,index));
+			rt_kprintf("%d\t",dio_get_val(DO_buff,index));
+			rt_kprintf("%d\t",dio_get_val(DI_buff,index));
+			rt_kprintf("%d\t",aio_get_val(AO_buff,index));
+			rt_kprintf("%d\t",aio_get_val(AI_buff,index));
 			rt_kputs("\n");
 		}
 	}

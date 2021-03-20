@@ -13,6 +13,7 @@ static small_modbus_t modbus_slave = {0};
 //#define MODBUS_PRINTF(...) 
 #define MODBUS_PRINTF(...)   modbus_debug((&modbus_slave),__VA_ARGS__)
 
+//从机回调函数,当从机接收到主机的请求(数据校验和地址功能码已经解析完),在这个回调函数内填充数据，返回数据的长度即可
 static int test_modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,int addr,int num,void *read_write_data)
 {
 	int rc = 0;
@@ -49,21 +50,6 @@ static int test_modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,
 				rc = rt_device_read(bio_dev,AI_MASK+addr,read_write_data,num);  
 			}
 		}break;
-//		{
-//			if((0 <= addr)&&(addr < 10000)) //地址映射，地址从0开始
-//			{
-//				uint8_t value1 = num?1:0;
-//				rc = rt_device_write(bio_dev,DO_MASK+addr,&value1,1);
-//			}
-//		}break;
-//		{
-//			if((20000 <= addr)&&(addr < 30000)) //地址映射，地址从20000开始
-//			{
-//				addr = addr - 20000;
-//				uint16_t value2 = num;
-//				rc = rt_device_write(bio_dev,AO_MASK+addr,&value2,1);
-//			}
-//		}break;
 		case MODBUS_FC_WRITE_SINGLE_COIL:	//写单个线圈,1bit代表一个线圈
 		case MODBUS_FC_WRITE_MULTIPLE_COILS:		//写线圈,1bit代表一个线圈
 		{
@@ -91,7 +77,7 @@ static int test_modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,
 
 static int uart_rts(int on)
 {
-	board_uart_dir(4,on);
+	board_uart_dir(4,on);//rts设置
 	return 0;
 }
 
@@ -100,6 +86,9 @@ static void test_modbus_rtu_slave_thread(void *param)
 	int rc = 0;
 	int count = 0;
 	small_modbus_t *smb_slave = param;
+	
+	bio_dev = rt_device_find("bio");
+	rt_device_open(bio_dev,0);
 	
 	modbus_init(smb_slave,MODBUS_CORE_RTU,modbus_port_device_create("uart4")); // init modbus
 	
@@ -138,9 +127,6 @@ static void test_modbus_rtu_slave_thread(void *param)
 int test_modbus_rtu_slave(void)
 {
 	rt_thread_t tid;
-	
-	bio_dev = rt_device_find("bio");
-	rt_device_open(bio_dev,0);
 	
 	tid = rt_thread_create("slave",test_modbus_rtu_slave_thread, &modbus_slave,2048,20, 10);
 	if (tid != RT_NULL)
