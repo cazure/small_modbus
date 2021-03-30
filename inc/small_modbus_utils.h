@@ -24,7 +24,7 @@ void modbus_reg_m2h(void *dest_host,void *source_modbus_reg,int reg_num);
 int dio_get_val(uint8_t *array,uint16_t index);
 void dio_set_val(uint8_t *array,uint16_t index,int status);
 int aio_get_val(uint16_t *array,uint16_t index);
-void aio_set_val(uint8_t *array,uint16_t index,int status);
+void aio_set_val(uint16_t *array,uint16_t index,int status);
 
 void modbus_set_bits_from_byte(uint8_t *dest, int idx, const uint8_t value);
 void modbus_set_bits_from_bytes(uint8_t *dest, int idx, unsigned int nb_bits,

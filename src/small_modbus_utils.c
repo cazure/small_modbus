@@ -211,7 +211,7 @@ int aio_get_val(uint16_t *array,uint16_t index)
 	return array[index];
 }
 
-void aio_set_val(uint8_t *array,uint16_t index,int status)
+void aio_set_val(uint16_t *array,uint16_t index,int status)
 {
 	array[index] = status;
 }
