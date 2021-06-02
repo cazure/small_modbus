@@ -1,4 +1,4 @@
-/*
+ï»¿/*
  * Change Logs:
  * Date           Author       Notes
  * 2020-08-21     chenbin      small modbus the first version
@@ -137,8 +137,8 @@ enum portType
 
 
 typedef struct _small_modbus        small_modbus_t;
-typedef struct _small_modbus_core   small_modbus_core_t; //modbus´¦ÀíºËĞÄ rtu tcp 
-typedef struct _small_modbus_port   small_modbus_port_t; //modbus¶Ë¿Ú
+typedef struct _small_modbus_core   small_modbus_core_t; //modbuså¤„ç†æ ¸å¿ƒ rtu tcp 
+typedef struct _small_modbus_port   small_modbus_port_t; //modbusç«¯å£
 
 struct _small_modbus_core
 {
@@ -167,19 +167,19 @@ struct _small_modbus_port
 struct _small_modbus
 {
 	uint8_t			mode;
-	uint8_t     slave_addr;				//´Ó»úµØÖ·
+	uint8_t     slave_addr;				//ä»æœºåœ°å€
 	uint8_t     debug_level;
 	uint16_t    transfer_id;
 	uint16_t    protocol_id;
 	
 	int         status;
 	int         error_code;
-	uint32_t		timeout_frame;				//Ö¡³¬Ê±Ê±¼äms
-	uint32_t		timeout_byte;				//×Ö½Ú³¬Ê±Ê±¼äms
-	uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];  //modbus¶Á»º³åÇø
-	uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];  //modbusĞ´»º³åÇø
-	small_modbus_core_t *core;		//modbus´¦ÀíºËĞÄ rtu tcp 
-	small_modbus_port_t *port;		//modbus¶Ë¿Ú
+	uint32_t		timeout_frame;				//å¸§è¶…æ—¶æ—¶é—´ms
+	uint32_t		timeout_byte;				//å­—èŠ‚è¶…æ—¶æ—¶é—´ms
+	uint8_t     read_buff[MODBUS_MAX_ADU_LENGTH];  //modbusè¯»ç¼“å†²åŒº
+	uint8_t     write_buff[MODBUS_MAX_ADU_LENGTH];  //modbuså†™ç¼“å†²åŒº
+	small_modbus_core_t *core;		//modbuså¤„ç†æ ¸å¿ƒ rtu tcp 
+	small_modbus_port_t *port;		//modbusç«¯å£
 };
 
 int _modbus_init(small_modbus_t *smb);
@@ -235,57 +235,5 @@ int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t waittime);
 int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_len,small_modbus_slave_callback_t slave_callback);
 /* slave wait and handle query for callback */
 int modbus_slave_wait_handle(small_modbus_t *smb,small_modbus_slave_callback_t slave_callback,int32_t waittime);
-
-//#define MODBUS_SLAVE_MAPPING_TABLE
-#ifdef MODBUS_SLAVE_MAPPING_TABLE
-/* slave mapping table */
-typedef struct _small_modbus_slave_mapping	small_modbus_slave_mapping_t;
-
-struct _small_modbus_slave_mapping
-{
-	struct bit{int start;int num;uint8_t *array;}bit;
-	struct input_bit{int start;int num;uint8_t *array;}input_bit;
-	struct registers{int start;int num;uint16_t *array;}registers;
-	struct input_registers{int start;int num;uint16_t *array;}input_registers;
-};
-
-#define modbus_slave_mapping_init(map,\
-bit_start,bit_num,bit_array,    input_bit_start,input_bit_num,input_bit_array,\
-reg_start,reg_num,reg_array,    input_reg_start,input_reg_num,input_reg_array)\
-{\
-    map.bit.start = bit_start;\
-    map.bit.num = bit_num;\
-    map.bit.array = bit_array;\
-    map.input_bit.start = input_bit_start;\
-    map.input_bit.num   = input_bit_num;\
-    map.input_bit.array = input_bit_array;\
-    map.registers.start = reg_start;\
-    map.registers.num   = reg_num;\
-    map.registers.array = reg_array;\
-    map.input_registers.start = input_reg_start;\
-    map.input_registers.num   = input_reg_num;\
-    map.input_registers.array = input_reg_array;\
-}
-
-#define modbus_slave_mapping_new(map,\
-bit_start,bit_num,input_bit_start,input_bit_num,\
-reg_start,reg_num,input_reg_start,input_reg_num) \
-{\
-    static uint8_t _##map##_bit_array[bit_num];\
-    static uint8_t _##map##_input_bit_array[input_bit_num];\
-    static uint16_t _##map##_reg_array[reg_num];\
-    static uint16_t _##map##_input_reg_array[input_reg_num];\
-    modbus_slave_mapping_init(map,\
-        bit_start,          bit_num,            _##map##_bit_array,\
-        input_bit_start,    input_bit_num,      _##map##_input_bit_array,\
-        reg_start,          reg_num,            _##map##_reg_array,\
-        input_reg_start,    input_reg_num,      _##map##_input_reg_array\
-    );\
-}
-/* slave handle query data for mapping */
-int modbus_slave_handle_mapping(small_modbus_t *smb,uint8_t *request,uint16_t request_len,small_modbus_slave_mapping_t * slave_mapping_tab);
-/* slave wait and handle query for mapping */
-int modbus_slave_wait_handle_mapping(small_modbus_t *smb,small_modbus_slave_mapping_t * slave_mapping_tab,int32_t waittime);
-#endif
 
 #endif /* _SMALL_MODBUS_BASE_H_ */

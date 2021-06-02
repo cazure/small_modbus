@@ -1,15 +1,20 @@
-#ifndef _SMALL_MODBUS_RTTHREAD_H_
-#define _SMALL_MODBUS_RTTHREAD_H_
+﻿#ifndef _SMALL_MODBUS_PORT_RTTHREAD_H_
+#define _SMALL_MODBUS_PORT_RTTHREAD_H_
 
-#include <rtthread.h>
+#include "stdint.h"
 #include "string.h"
-#include "small_modbus.h"
+#include "small_modbus_base.h"
+#include "small_modbus_port.h"
 
+/*
+* modbus on rtthread
+*/
+#if SMALL_MODBUS_RTTHREAD
 /*
 *modbus port device
 */
-#define SMALL_MODBUS_RTTHREAD_USE_DEVICDE 
-#ifdef SMALL_MODBUS_RTTHREAD_USE_DEVICDE
+#if SMALL_MODBUS_RTTHREAD_USE_DEVICDE
+#include <rtthread.h>
 #include <rtdevice.h>
 
 typedef struct _small_modbus_port_device   small_modbus_port_device_t;
@@ -17,13 +22,12 @@ typedef struct _small_modbus_port_device   small_modbus_port_device_t;
 struct _small_modbus_port_device
 {
 	struct _small_modbus_port 	base;
-	const char								*device_name;
-	struct rt_device					*device;
-	struct rt_semaphore 			rx_sem;
-	rt_size_t									rx_size;
-	int												oflag;
-	
-  int 		(*rts_set)(int on);
+	const char                  *device_name;
+	struct rt_device            *device;
+	struct rt_semaphore         rx_sem;
+	rt_size_t                   rx_size;
+	int                         oflag;
+    int                         (*rts_set)(int on);
 };
 
 int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_name);
@@ -39,8 +43,9 @@ int modbus_set_oflag(small_modbus_t *smb,int oflag);
 /*
 *modbus port socket
 */
-//#define SMALL_MODBUS_RTTHREAD_USE_SOCKET
-#ifdef SMALL_MODBUS_RTTHREAD_USE_SOCKET
+#if SMALL_MODBUS_RTTHREAD_USE_SOCKET
+#include <rtthread.h>
+#include <rtdevice.h>
 
 typedef struct _small_modbus_port_socket   small_modbus_port_socket_t;
 
@@ -49,8 +54,7 @@ struct _small_modbus_port_socket
 	struct _small_modbus_port base;
 	const char *hostname;
 	const char *hostport;
-	
-	void				*device;
+	void        *device;
 	int32_t     socket_fd;
 };
 
@@ -65,6 +69,8 @@ small_modbus_port_socket_t *modbus_port_socket_get(small_modbus_t *smb);
 */
 int modbus_init(small_modbus_t *smb,uint8_t core_type,void *port);
 small_modbus_t *modbus_create(uint8_t core_type,void *port);
+
+#endif
 
 #endif /* _SMALL_MODBUS_RTTHREAD_H_ */
 

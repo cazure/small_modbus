@@ -1,9 +1,19 @@
-/*
+﻿/*
  * Change Logs:
  * Date           Author       Notes
  * 2021-03     		chenbin      small_modbus_rtthread.c  for rtthread
  */
-#include "small_modbus_rtthread.h"
+
+#include "small_modbus_port_rtthread.h"
+ /*
+ * modbus on rtthread
+ */
+#if SMALL_MODBUS_RTTHREAD
+#include "small_modbus_utils.h"
+#include "small_modbus_rtu.h"
+#include "small_modbus_tcp.h"
+
+
 #ifdef RT_USING_DEVICE
 #include <rtdevice.h>
 #endif
@@ -289,4 +299,6 @@ small_modbus_t *modbus_create(uint8_t core_type,void *port)
 	}
 	return NULL;
 }
+
+#endif
 
