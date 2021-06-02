@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Change Logs:
  * Date           Author       Notes
  * 2021-03     		chenbin      small_modbus_rtthread.c  for rtthread
@@ -176,7 +176,7 @@ static int _modbus_rtdevice_wait(small_modbus_t *smb,int timeout)
 	return rc;
 }
 
-int modbus_port_rtdevice_init(small_modbus_port_device_t *port,const char *device_name)
+int modbus_port_rtdevice_init(small_modbus_port_rtdevice_t *port,const char *device_name)
 {
 	//rt_memcpy(&port->base,&_port_device_default,sizeof(small_modbus_port_t));
 	
@@ -198,12 +198,12 @@ int modbus_port_rtdevice_init(small_modbus_port_device_t *port,const char *devic
 }
 small_modbus_port_rtdevice_t *modbus_port_rtdevice_create(const char *device_name)
 {
-	small_modbus_port_rtdevice_t *port_device = rt_malloc_align(sizeof(small_modbus_port_rtdevice_t),4);
-	if(port_device)
+	small_modbus_port_rtdevice_t *smb_port_device = rt_malloc_align(sizeof(small_modbus_port_rtdevice_t),4);
+	if(smb_port_device)
 	{
-		rt_memset(port_device,0,sizeof(small_modbus_port_device_t));
-		modbus_port_device_init(port_device,device_name);
-		return port_device;
+		rt_memset(smb_port_device,0,sizeof(small_modbus_port_rtdevice_t));
+		modbus_port_rtdevice_init(smb_port_device,device_name);
+		return smb_port_device;
 	}
 	return NULL;
 }
@@ -211,38 +211,38 @@ small_modbus_port_rtdevice_t * modbus_port_rtdevice_get(small_modbus_t *smb)
 {
 	if(smb->port->type == MODBUS_PORT_DEVICE)
 	{
-		return (small_modbus_port_device_t*)smb->port;
+		return (small_modbus_port_rtdevice_t*)smb->port;
 	}
 	return NULL;
 }
 
 int modbus_set_rts(small_modbus_t *smb,int (*rts_set)(int on))
 {
-	small_modbus_port_device_t *port_device = modbus_port_device_get(smb);
-	if(port_device)
+	small_modbus_port_rtdevice_t *smb_port_device = modbus_port_rtdevice_get(smb);
+	if(smb_port_device)
 	{
-		port_device->rts_set = rts_set;
+		smb_port_device->rts_set = rts_set;
 	}
 	return 0;
 }
 int modbus_set_serial_config(small_modbus_t *smb,struct serial_configure *serial_config)
 {
-	small_modbus_port_device_t *port_device = modbus_port_device_get(smb);
-	if(port_device)
+	small_modbus_port_rtdevice_t *smb_port_device = modbus_port_rtdevice_get(smb);
+	if(smb_port_device)
 	{
-		if(port_device->device)
+		if(smb_port_device->device)
 		{
-			rt_device_control(port_device->device, RT_DEVICE_CTRL_CONFIG, serial_config);
+			rt_device_control(smb_port_device->device, RT_DEVICE_CTRL_CONFIG, serial_config);
 		}
 	}
 	return 0;
 }
 int modbus_set_oflag(small_modbus_t *smb,int oflag)
 {
-	small_modbus_port_device_t *port_device = modbus_port_device_get(smb);
-	if(port_device)
+	small_modbus_port_rtdevice_t *smb_port_device = modbus_port_rtdevice_get(smb);
+	if(smb_port_device)
 	{
-		port_device->oflag = oflag;
+		smb_port_device->oflag = oflag;
 	}
 	return 0;
 }
