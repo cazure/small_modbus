@@ -1,9 +1,10 @@
-﻿/*
+/*
  * Change Logs:
  * Date           Author       Notes
  * 2020-08-21     chenbin      small modbus the first version
  */
 #include "small_modbus_base.h"
+#include "small_modbus_utils.h"
 
 int _modbus_init(small_modbus_t *smb)
 {

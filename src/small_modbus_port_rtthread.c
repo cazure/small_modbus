@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Change Logs:
  * Date           Author       Notes
  * 2021-03     		chenbin      small_modbus_rtthread.c  for rtthread
@@ -9,14 +9,10 @@
  * modbus on rtthread
  */
 #if SMALL_MODBUS_RTTHREAD
+#include "small_modbus_base.h"
 #include "small_modbus_utils.h"
 #include "small_modbus_rtu.h"
 #include "small_modbus_tcp.h"
-
-
-#ifdef RT_USING_DEVICE
-#include <rtdevice.h>
-#endif
 
 int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 {
@@ -33,8 +29,6 @@ int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 	rt_exit_critical();
 	return 0;
 }
-
-
 /*
 *modbus port device
 */
@@ -130,6 +124,7 @@ static int _modbus_rtdevice_wait(small_modbus_t *smb,int timeout)
 	}
 	return rc;
 }
+
 int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_name)
 {
 	//rt_memcpy(&port->base,&_port_device_default,sizeof(small_modbus_port_t));
@@ -206,7 +201,99 @@ int modbus_set_oflag(small_modbus_t *smb,int oflag)
 /*
 *modbus port socket
 */
-#ifdef SMALL_MODBUS_RTTHREAD_USE_SOCKET
+#if SMALL_MODBUS_RTTHREAD_USE_SOCKET
+
+static rt_err_t _modbus_rtsocket_rx_indicate(rt_device_t dev, rt_size_t size)
+{
+	small_modbus_port_device_t *smb_port_device = dev->user_data;
+	
+	smb_port_device->rx_size = size;
+	
+	return rt_sem_release(&(smb_port_device->rx_sem));
+}
+
+static int _modbus_rtsocket_open(small_modbus_t *smb)
+{
+	small_modbus_port_device_t *smb_port_device = (small_modbus_port_device_t *)smb->port;
+	if(smb_port_device->device)
+	{
+		smb_port_device->device->user_data = smb_port_device;
+		
+		rt_device_set_rx_indicate(smb_port_device->device, _modbus_rtdevice_rx_indicate);
+		
+		rt_device_open(smb_port_device->device, smb_port_device->oflag);
+		//rt_device_open(smb_port_device->device, RT_DEVICE_FLAG_INT_RX);
+		//rt_device_open(smb_port_device->device, RT_DEVICE_FLAG_DMA_RX);
+		
+		if(smb_port_device->rts_set)
+		{
+			smb_port_device->rts_set(0);
+		}
+	}
+	return 0;
+}
+
+static int _modbus_rtsocket_close(small_modbus_t *smb)
+{
+	small_modbus_port_device_t *smb_port_device = (small_modbus_port_device_t *)smb->port;
+	if(smb_port_device->device)
+	{
+		rt_device_close(smb_port_device->device);
+	}
+	return 0;
+}
+
+static int _modbus_rtsocket_write(small_modbus_t *smb,uint8_t *data,uint16_t length)
+{
+	small_modbus_port_device_t *smb_port_device = (small_modbus_port_device_t *)smb->port;
+	rt_enter_critical();
+	
+	if(smb_port_device->rts_set)
+			smb_port_device->rts_set(1);
+		
+	rt_device_write(smb_port_device->device,0,data,length);
+	
+	if(smb_port_device->rts_set)
+			smb_port_device->rts_set(0);
+	
+	rt_exit_critical();
+	return length;
+}
+
+static int _modbus_rtsocket_read(small_modbus_t *smb,uint8_t *data,uint16_t length)
+{
+	small_modbus_port_device_t *port_device = (small_modbus_port_device_t *)smb->port;
+	
+	return rt_device_read(port_device->device,0,data,length);
+}
+
+static int _modbus_rtsocket_flush(small_modbus_t *smb)
+{
+	small_modbus_port_device_t *port_device = (small_modbus_port_device_t *)smb->port;
+	
+	int rc = rt_device_read(port_device->device,0,smb->read_buff,MODBUS_MAX_ADU_LENGTH);
+	
+	rt_sem_control(&(port_device->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
+	return rc;
+}
+
+static int _modbus_rtsocket_wait(small_modbus_t *smb,int timeout)
+{
+	int rc = -1;
+	small_modbus_port_device_t *port_device = (small_modbus_port_device_t *)smb->port;
+	
+	rc = rt_sem_take(&(port_device->rx_sem),timeout);
+	if(rc < RT_EOK)
+	{
+		return MODBUS_TIMEOUT;
+	}
+	if(port_device->rx_size == 0)
+	{
+		return MODBUS_ERROR_READ;
+	}
+	return rc;
+}
+
 
 int modbus_port_socket_init(small_modbus_port_socket_t *port,char *hostname,char *hostport)
 {
@@ -214,12 +301,12 @@ int modbus_port_socket_init(small_modbus_port_socket_t *port,char *hostname,char
 	//rt_memcpy(&port->base,&_port_device_default,sizeof(small_modbus_port_t));
 	
 	(*(uint32_t *)&(port->base.type)) = MODBUS_PORT_DEVICE;
-	port->base.open = _modbus_rtdevice_open;
-	port->base.close = _modbus_rtdevice_close;
-	port->base.read = _modbus_rtdevice_read;
-	port->base.write = _modbus_rtdevice_write;
-	port->base.flush = _modbus_rtdevice_flush;
-	port->base.wait = _modbus_rtdevice_wait;
+	port->base.open = _modbus_rtsocket_open;
+	port->base.close = _modbus_rtsocket_close;
+	port->base.read = _modbus_rtsocket_read;
+	port->base.write = _modbus_rtsocket_write;
+	port->base.flush = _modbus_rtsocket_flush;
+	port->base.wait = _modbus_rtsocket_wait;
 	
 	port->hostname = hostname;
 	port->hostport = hostport;
