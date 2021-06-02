@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Change Logs:
  * Date           Author       Notes
  * 2020-08-21     chenbin      small modbus the first version

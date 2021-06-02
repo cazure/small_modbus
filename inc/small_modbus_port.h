@@ -1,10 +1,10 @@
-#ifndef __SMALL_MODBUS_PORT_H__
+﻿#ifndef __SMALL_MODBUS_PORT_H__
 #define __SMALL_MODBUS_PORT_H__
 
 /*
 *RTTHREAD PORT
 */
-#define SMALL_MODBUS_RTTHREAD 1
+#define SMALL_MODBUS_RTTHREAD 0
 #define SMALL_MODBUS_RTTHREAD_USE_DEVICDE  1
 #define SMALL_MODBUS_RTTHREAD_USE_SOCKET   0
 
@@ -23,10 +23,11 @@
 /*
 *WIN32 PORT  
 */
-#define SMALL_MODBUS_WIN32 0
+#define SMALL_MODBUS_WIN32 1
 #if SMALL_MODBUS_WIN32
 #include "small_modbus_port_win32.h"
 #endif
 
+#define SMALL_MODBUS_CRC_BYTE_SWAP 1
 
 #endif /* __SMALL_MODBUS_PORT_H__ */

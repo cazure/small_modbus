@@ -10,5 +10,10 @@
  */
 #if SMALL_MODBUS_LINUX
 
+int _modbus_debug(small_modbus_t* smb, int level, const char* fmt, ...)
+{
+    return 0;
+}
+
 #endif
 

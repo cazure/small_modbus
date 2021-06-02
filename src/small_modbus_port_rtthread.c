@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Change Logs:
  * Date           Author       Notes
  * 2021-03     		chenbin      small_modbus_rtthread.c  for rtthread
@@ -30,13 +30,64 @@ int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 	return 0;
 }
 /*
+*modbus_init
+*/
+int modbus_init(small_modbus_t* smb, uint8_t core_type, void* port)
+{
+    small_modbus_port_t* smb_port;
+    if (smb && core_type && port)
+    {
+        _modbus_init(smb);
+        if ((core_type == MODBUS_CORE_RTU) || (core_type == MODBUS_CORE_TCP))  // check core type
+        {
+            if (core_type == MODBUS_CORE_RTU)
+            {
+                smb->core = (small_modbus_core_t*)&_modbus_rtu_core;
+            }
+            if (core_type == MODBUS_CORE_TCP)
+            {
+                smb->core = (small_modbus_core_t*)&_modbus_tcp_core;
+            }
+        }
+        else
+        {
+            return 0;
+        }
+        smb_port = port;
+        if ((smb_port->type == MODBUS_PORT_DEVICE) || (smb_port->type == MODBUS_PORT_SOCKET))  // check port type
+        {
+            smb->port = smb_port;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+small_modbus_t* modbus_create(uint8_t core_type, void* port)
+{
+    small_modbus_t* smb = rt_malloc_align(sizeof(small_modbus_t), 4);
+    if (smb)
+    {
+        if (modbus_init(smb, core_type, port))
+        {
+            return smb;
+        }
+        else
+        {
+            rt_free_align(smb);
+        }
+    }
+    return NULL;
+}
+
+/*
 *modbus port device
 */
 #ifdef SMALL_MODBUS_RTTHREAD_USE_DEVICDE
 
 static rt_err_t _modbus_rtdevice_rx_indicate(rt_device_t dev, rt_size_t size)
 {
-	small_modbus_port_device_t *smb_port_device = dev->user_data;
+    small_modbus_port_rtdevice_t *smb_port_device = dev->user_data;
 	
 	smb_port_device->rx_size = size;
 	
@@ -45,7 +96,7 @@ static rt_err_t _modbus_rtdevice_rx_indicate(rt_device_t dev, rt_size_t size)
 
 static int _modbus_rtdevice_open(small_modbus_t *smb)
 {
-	small_modbus_port_device_t *smb_port_device = (small_modbus_port_device_t *)smb->port;
+    small_modbus_port_rtdevice_t *smb_port_device = (small_modbus_port_rtdevice_t*)smb->port;
 	if(smb_port_device->device)
 	{
 		smb_port_device->device->user_data = smb_port_device;
@@ -66,7 +117,7 @@ static int _modbus_rtdevice_open(small_modbus_t *smb)
 
 static int _modbus_rtdevice_close(small_modbus_t *smb)
 {
-	small_modbus_port_device_t *smb_port_device = (small_modbus_port_device_t *)smb->port;
+    small_modbus_port_rtdevice_t *smb_port_device = (small_modbus_port_rtdevice_t*)smb->port;
 	if(smb_port_device->device)
 	{
 		rt_device_close(smb_port_device->device);
@@ -76,7 +127,7 @@ static int _modbus_rtdevice_close(small_modbus_t *smb)
 
 static int _modbus_rtdevice_write(small_modbus_t *smb,uint8_t *data,uint16_t length)
 {
-	small_modbus_port_device_t *smb_port_device = (small_modbus_port_device_t *)smb->port;
+    small_modbus_port_rtdevice_t *smb_port_device = (small_modbus_port_rtdevice_t*)smb->port;
 	rt_enter_critical();
 	
 	if(smb_port_device->rts_set)
@@ -93,39 +144,39 @@ static int _modbus_rtdevice_write(small_modbus_t *smb,uint8_t *data,uint16_t len
 
 static int _modbus_rtdevice_read(small_modbus_t *smb,uint8_t *data,uint16_t length)
 {
-	small_modbus_port_device_t *port_device = (small_modbus_port_device_t *)smb->port;
+    small_modbus_port_rtdevice_t * smb_port_device = (small_modbus_port_rtdevice_t*)smb->port;
 	
-	return rt_device_read(port_device->device,0,data,length);
+	return rt_device_read(smb_port_device->device,0,data,length);
 }
 
 static int _modbus_rtdevice_flush(small_modbus_t *smb)
 {
-	small_modbus_port_device_t *port_device = (small_modbus_port_device_t *)smb->port;
+    small_modbus_port_rtdevice_t* smb_port_device = (small_modbus_port_rtdevice_t*)smb->port;
 	
-	int rc = rt_device_read(port_device->device,0,smb->read_buff,MODBUS_MAX_ADU_LENGTH);
+	int rc = rt_device_read(smb_port_device->device,0,smb->read_buff,MODBUS_MAX_ADU_LENGTH);
 	
-	rt_sem_control(&(port_device->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
+	rt_sem_control(&(smb_port_device->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
 	return rc;
 }
 
 static int _modbus_rtdevice_wait(small_modbus_t *smb,int timeout)
 {
 	int rc = -1;
-	small_modbus_port_device_t *port_device = (small_modbus_port_device_t *)smb->port;
+	small_modbus_port_rtdevice_t * smb_port_device = (small_modbus_port_rtdevice_t*)smb->port;
 	
-	rc = rt_sem_take(&(port_device->rx_sem),timeout);
+	rc = rt_sem_take(&(smb_port_device->rx_sem),timeout);
 	if(rc < RT_EOK)
 	{
 		return MODBUS_TIMEOUT;
 	}
-	if(port_device->rx_size == 0)
+	if(smb_port_device->rx_size == 0)
 	{
 		return MODBUS_ERROR_READ;
 	}
 	return rc;
 }
 
-int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_name)
+int modbus_port_rtdevice_init(small_modbus_port_device_t *port,const char *device_name)
 {
 	//rt_memcpy(&port->base,&_port_device_default,sizeof(small_modbus_port_t));
 	
@@ -145,9 +196,9 @@ int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_
 	}
 	return 0;
 }
-small_modbus_port_device_t *modbus_port_device_create(const char *device_name)
+small_modbus_port_rtdevice_t *modbus_port_rtdevice_create(const char *device_name)
 {
-	small_modbus_port_device_t *port_device = rt_malloc_align(sizeof(small_modbus_port_device_t),4);
+	small_modbus_port_rtdevice_t *port_device = rt_malloc_align(sizeof(small_modbus_port_rtdevice_t),4);
 	if(port_device)
 	{
 		rt_memset(port_device,0,sizeof(small_modbus_port_device_t));
@@ -156,7 +207,7 @@ small_modbus_port_device_t *modbus_port_device_create(const char *device_name)
 	}
 	return NULL;
 }
-small_modbus_port_device_t * modbus_port_device_get(small_modbus_t *smb)
+small_modbus_port_rtdevice_t * modbus_port_rtdevice_get(small_modbus_t *smb)
 {
 	if(smb->port->type == MODBUS_PORT_DEVICE)
 	{
@@ -337,55 +388,6 @@ small_modbus_port_socket_t * modbus_port_socket_get(small_modbus_t *smb)
 }
 
 #endif
-
-/*
-*modbus_init
-*/
-int modbus_init(small_modbus_t *smb,uint8_t core_type,void *port)
-{
-	small_modbus_port_t *smb_port;
-	if(smb&&core_type&&port)
-	{
-		_modbus_init(smb);
-		if((core_type == MODBUS_CORE_RTU)||(core_type == MODBUS_CORE_TCP))  // check core type
-		{
-			if(core_type == MODBUS_CORE_RTU)
-			{
-				smb->core = (small_modbus_core_t*)&_modbus_rtu_core;
-			}
-			if(core_type == MODBUS_CORE_TCP)
-			{
-				smb->core = (small_modbus_core_t*)&_modbus_tcp_core;
-			}
-		}else
-		{
-			return 0;
-		}
-		smb_port = port;
-		if((smb_port->type == MODBUS_PORT_DEVICE)||(smb_port->type == MODBUS_PORT_SOCKET))  // check port type
-		{
-			smb->port = smb_port;
-			return 1;
-		}
-	}
-	return 0;
-}
-
-small_modbus_t *modbus_create(uint8_t core_type,void *port)
-{
-	small_modbus_t *smb = rt_malloc_align(sizeof(small_modbus_t),4);
-	if(smb)
-	{
-		if(modbus_init(smb,core_type,port))
-		{
-			return smb;
-		}else
-		{
-			rt_free_align(smb);
-		}
-	}
-	return NULL;
-}
 
 #endif
 

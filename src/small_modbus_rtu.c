@@ -1,10 +1,11 @@
-/*
+﻿/*
  * Change Logs:
  * Date           Author       Notes
  * 2020-08-21     chenbin      small modbus the first version
  */
 #include "small_modbus_rtu.h"
 #include "small_modbus_utils.h"
+#include "small_modbus_port.h"
 
 /* Builds a RTU request header */
 static int _rtu_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
@@ -26,27 +27,38 @@ static int _rtu_build_response_header(small_modbus_t *smb,uint8_t *buff,int slav
     return _MODBUS_RTU_PRESET_RSP_LENGTH;
 }
 
+static inline uint16_t bswap_16(uint16_t x)
+{
+    return (x >> 8) | (x << 8);
+}
+
 static int _rtu_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 {
     uint16_t crc = modbus_crc16(buff,length);
-    buff[length++] = crc >> 8;
-    buff[length++] = crc & 0x00FF;
+#if SMALL_MODBUS_CRC_BYTE_SWAP
+    crc = bswap_16(crc);
+#endif
+    buff[length++] = crc >> 8;   //HIGH BYTE
+    buff[length++] = crc & 0x00FF; //LOW BYTE 
     return length;
 }
 
 static int _rtu_check_wait_request(small_modbus_t *smb,uint8_t *buff,int length)
 {
-    int addr = buff[0];
     uint16_t crc_cal = modbus_crc16(buff, length - 2);
-    uint16_t crc_recv = (buff[length - 2] << 8) | buff[length - 1];
+    uint16_t crc_recv = ((uint16_t)(buff[length - 2] << 8)) | (buff[length - 1]); //HIGH BYTE  LOW BYTE
+   
+#if SMALL_MODBUS_CRC_BYTE_SWAP
+    crc_cal = bswap_16(crc_cal);
+#endif
     if (crc_cal != crc_recv)
     {
-        modbus_debug_error(smb,"crc  0x%0X != 0x%0X\n",crc_cal, crc_recv);
+        modbus_debug_error(smb,"crc  %0X != %0X\n", crc_cal, crc_recv );
         return MODBUS_FAIL_CHECK;
     }
-    if (addr != smb->slave_addr && addr != MODBUS_BROADCAST_ADDRESS)
+    if (buff[0] != smb->slave_addr && buff[0] != MODBUS_BROADCAST_ADDRESS)
     {
-        modbus_debug_error(smb,"slave adrr: 0x%0X != 0x%0X\n", addr,smb->slave_addr);
+        modbus_debug_error(smb,"slave adrr: 0x%0X != 0x%0X\n", buff[0],smb->slave_addr);
         return MODBUS_FAIL_ADRR;
     }
     return length;
@@ -54,17 +66,20 @@ static int _rtu_check_wait_request(small_modbus_t *smb,uint8_t *buff,int length)
 
 static int _rtu_check_wait_response(small_modbus_t *smb,uint8_t *buff,int length)
 {
-    int addr = buff[0];
     uint16_t crc_cal = modbus_crc16(buff, length - 2);
-    uint16_t crc_recv = (buff[length - 2] << 8) | buff[length - 1];
+    uint16_t crc_recv = ((uint16_t)(buff[length - 2] << 8)) | (buff[length - 1]); //HIGH BYTE  LOW BYTE
+
+#if SMALL_MODBUS_CRC_BYTE_SWAP
+    crc_cal = bswap_16(crc_cal);
+#endif
     if (crc_cal != crc_recv)
     {
-        modbus_debug_error(smb,"crc  0x%0X != 0x%0X\n",crc_cal, crc_recv);
+        modbus_debug_error(smb, "crc  %0X != %0X\n", crc_cal, crc_recv);
         return MODBUS_FAIL_CHECK;
     }
-    if (addr != smb->slave_addr && addr != MODBUS_BROADCAST_ADDRESS)
+    if (buff[0] != smb->slave_addr && buff[0] != MODBUS_BROADCAST_ADDRESS)
     {
-        modbus_debug_error(smb,"slave adrr: 0x%0X != 0x%0X\n", addr,smb->slave_addr);
+        modbus_debug_error(smb,"slave adrr: 0x%0X != 0x%0X\n", buff[0],smb->slave_addr);
         return MODBUS_FAIL_ADRR;
     }
     return length;
