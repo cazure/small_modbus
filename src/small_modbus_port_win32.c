@@ -369,12 +369,12 @@ static int _modbus_win32device_wait(small_modbus_t* smb, int timeout)
         /* Check if some bytes available */
         if (read_len > 0)
         {
-            printf("RX[%d] ", read_len);
-            for (int i = 0; i < read_len; i++)
-            {
-                printf("%02X ", smb_port_device->read_buff[i]);
-            }
-            printf("\n");
+            //printf("RX[%d] ", read_len);
+            //for (int i = 0; i < read_len; i++)
+            //{
+            //    printf("%02X ", smb_port_device->read_buff[i]);
+            //}
+            //printf("\n");
             smb_port_device->read_buff_len = read_len;
             smb_port_device->read_buff_pos = 0;
             /* Some bytes read */
