@@ -8,7 +8,63 @@
 
 modbus核心（rtu、tcp），
 
-modbus端口（rtthread device、rtthread sal socket）
+modbus端口（rtthread device、rtthread sal socket、linux devfs 、linux socket、win32 device 、win32socket）
+
+
+
+### 使用:
+
+git clone 下载源码，将 src目录的中所有.c文件和 inc目录添加到项目中，然后将test目录的 small_modbus_port.h和test_modbus_rtu_matser.c或者test_modbus_rtu_slave.c添加到项目中，并修改到适当的配置
+
+修改small_modbus_port.h完成不同平台的适配
+
+```c
+#ifndef __SMALL_MODBUS_PORT_H__
+#define __SMALL_MODBUS_PORT_H__
+
+/*
+*RTTHREAD PORT
+*/
+#define SMALL_MODBUS_RTTHREAD 1
+#define SMALL_MODBUS_RTTHREAD_USE_DEVICDE  1
+#define SMALL_MODBUS_RTTHREAD_USE_SOCKET   0
+
+#if SMALL_MODBUS_RTTHREAD
+#include "small_modbus_port_rtthread.h"
+#endif
+
+/*
+*LINUX PORT
+*/
+#define SMALL_MODBUS_LINUX 0
+#if SMALL_MODBUS_LINUX
+#include "small_modbus_port_linux.h"
+#endif
+
+/*
+*WIN32 PORT  
+*/
+#define SMALL_MODBUS_WIN32 0
+#if SMALL_MODBUS_WIN32
+#include "small_modbus_port_win32.h"
+#endif
+
+#define SMALL_MODBUS_CRC_BYTE_SWAP 0
+
+#endif /* __SMALL_MODBUS_PORT_H__ */
+```
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -78,20 +134,20 @@ int modbus_slave_wait_handle(small_modbus_t *smb,small_modbus_slave_callback_t s
 
 ```c
 /*
-*modbus port device
+*modbus port rtdevice
 */
-int modbus_port_device_init(small_modbus_port_device_t *port,const char *device_name);
-small_modbus_port_device_t *modbus_port_device_create(const char *device_name);
-small_modbus_port_device_t *modbus_port_device_get(small_modbus_t *smb);
+int modbus_port_rtdevice_init(small_modbus_port_rtdevice_t *port,const char *device_name);
+small_modbus_port_rtdevice_t *modbus_port_rtdevice_create(const char *device_name);
+small_modbus_port_rtdevice_t *modbus_port_rtdevice_get(small_modbus_t *smb);
 int modbus_set_rts(small_modbus_t *smb,int (*rts_set)(int on));
 int modbus_set_serial_config(small_modbus_t *smb,struct serial_configure *serial_config);
 int modbus_set_oflag(small_modbus_t *smb,int oflag);
 /*
-*modbus port socket
+*modbus port rtsocket
 */
-int modbus_port_socket_init(small_modbus_port_socket_t *port,char *hostname,char *hostport);
-small_modbus_port_socket_t *modbus_port_socket_create(char *hostname,char *hostport);
-small_modbus_port_socket_t *modbus_port_socket_get(small_modbus_t *smb);
+int modbus_port_socket_init(small_modbus_port_rtsocket_t *port,char *hostname,char *hostport);
+small_modbus_port_socket_t *modbus_port_rtsocket_create(char *hostname,char *hostport);
+small_modbus_port_socket_t *modbus_port_rtsocket_get(small_modbus_t *smb);
 /*
 *modbus_init
 */
