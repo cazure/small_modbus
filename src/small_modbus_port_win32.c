@@ -28,6 +28,158 @@
 #include "stdint.h"
 #endif
 
+
+enum win32device_ringbuffer_state win32device_ringbuffer_status(struct win32device_ringbuffer* rb)
+{
+    if (rb->read_index == rb->write_index)
+    {
+        if (rb->read_mirror == rb->write_mirror)
+            return WIN32DEVICE_RINGBUFFER_EMPTY;
+        else
+            return WIN32DEVICE_RINGBUFFER_FULL;
+    }
+    return WIN32DEVICE_RINGBUFFER_HALFFULL;
+}
+
+void win32device_ringbuffer_init(struct win32device_ringbuffer* rb,
+    uint8_t* pool,
+    int16_t size)
+{
+    /* initialize read and write index */
+    rb->read_mirror = rb->read_index = 0;
+    rb->write_mirror = rb->write_index = 0;
+
+    /* set buffer pool and size */
+    rb->buffer_ptr = pool;
+    rb->buffer_size = size;
+}
+RTM_EXPORT(win32device_ringbuffer_init);
+
+/**
+ * put a block of data into ring buffer
+ */
+size_t win32device_ringbuffer_put(struct win32device_ringbuffer* rb,
+    const uint8_t* ptr,
+    uint16_t           length)
+{
+    uint16_t size;
+
+    /* whether has enough space */
+    size = win32device_ringbuffer_space_len(rb);
+
+    /* no space */
+    if (size == 0)
+        return 0;
+
+    /* drop some data */
+    if (size < length)
+        length = size;
+
+    if (rb->buffer_size - rb->write_index > length)
+    {
+        /* read_index - write_index = empty space */
+        memcpy(&rb->buffer_ptr[rb->write_index], ptr, length);
+        /* this should not cause overflow because there is enough space for
+         * length of data in current mirror */
+        rb->write_index += length;
+        return length;
+    }
+
+    memcpy(&rb->buffer_ptr[rb->write_index],
+        &ptr[0],
+        rb->buffer_size - rb->write_index);
+    memcpy(&rb->buffer_ptr[0],
+        &ptr[rb->buffer_size - rb->write_index],
+        length - (rb->buffer_size - rb->write_index));
+
+    /* we are going into the other side of the mirror */
+    rb->write_mirror = ~rb->write_mirror;
+    rb->write_index = length - (rb->buffer_size - rb->write_index);
+
+    return length;
+}
+
+/**
+ *  get data from ring buffer
+ */
+size_t win32device_ringbuffer_get(struct win32device_ringbuffer* rb,
+    uint8_t* ptr,
+    uint16_t           length)
+{
+    size_t size;
+
+    /* whether has enough data  */
+    size = win32device_ringbuffer_data_len(rb);
+
+    /* no data */
+    if (size == 0)
+        return 0;
+
+    /* less data */
+    if (size < length)
+        length = size;
+
+    if (rb->buffer_size - rb->read_index > length)
+    {
+        /* copy all of data */
+        memcpy(ptr, &rb->buffer_ptr[rb->read_index], length);
+        /* this should not cause overflow because there is enough space for
+         * length of data in current mirror */
+        rb->read_index += length;
+        return length;
+    }
+
+    memcpy(&ptr[0],
+        &rb->buffer_ptr[rb->read_index],
+        rb->buffer_size - rb->read_index);
+    memcpy(&ptr[rb->buffer_size - rb->read_index],
+        &rb->buffer_ptr[0],
+        length - (rb->buffer_size - rb->read_index));
+
+    /* we are going into the other side of the mirror */
+    rb->read_mirror = ~rb->read_mirror;
+    rb->read_index = length - (rb->buffer_size - rb->read_index);
+
+    return length;
+}
+
+/**
+ * get the size of data in rb
+ */
+size_t win32device_ringbuffer_data_len(struct win32device_ringbuffer* rb)
+{
+    switch (win32device_ringbuffer_status(rb))
+    {
+    case WIN32DEVICE_RINGBUFFER_EMPTY:
+        return 0;
+    case WIN32DEVICE_RINGBUFFER_FULL:
+        return rb->buffer_size;
+    case WIN32DEVICE_RINGBUFFER_HALFFULL:
+    default:
+        if (rb->write_index > rb->read_index)
+            return rb->write_index - rb->read_index;
+        else
+            return rb->buffer_size - (rb->read_index - rb->write_index);
+    };
+}
+
+/**
+ * empty the rb
+ */
+void win32device_ringbuffer_reset(struct win32device_ringbuffer* rb)
+{
+    rb->read_mirror = 0;
+    rb->read_index = 0;
+    rb->write_mirror = 0;
+    rb->write_index = 0;
+}
+
+uint16_t win32device_ringbuffer_get_size(struct win32device_ringbuffer* rb)
+{
+    return rb->buffer_size;
+}
+
+
 int _modbus_debug(small_modbus_t* smb, int level, const char* fmt, ...)
 {
     static char log_buf[256];
@@ -196,44 +348,47 @@ static int _modbus_win32device_open(small_modbus_t* smb)
     /* Data bits */
     switch (smb_port_device->serial_config.data_bits)
     {
-    case DATA_BITS_5:
-        dcb.ByteSize = 5;
-        break;
-    case DATA_BITS_6:
-        dcb.ByteSize = 6;
-        break;
-    case DATA_BITS_7:
-        dcb.ByteSize = 7;
-        break;
-    case DATA_BITS_8:
-    default:
-        dcb.ByteSize = 8;
-        break;
+        case DATA_BITS_5:
+            dcb.ByteSize = 5;
+            break;
+        case DATA_BITS_6:
+            dcb.ByteSize = 6;
+            break;
+        case DATA_BITS_7:
+            dcb.ByteSize = 7;
+            break;
+        case DATA_BITS_8:
+        default:
+            dcb.ByteSize = 8;
+            break;
     }
 
     /* Stop bits */
     if (smb_port_device->serial_config.stop_bits == STOP_BITS_1)
+    {
         dcb.StopBits = ONESTOPBIT;
+    } 
     else /* 2 */
+    {
         dcb.StopBits = TWOSTOPBITS;
-
+    }
     /* Parity */
     if (smb_port_device->serial_config.parity == PARITY_NONE)
     {
         dcb.Parity = NOPARITY;
         dcb.fParity = FALSE;
-    }
-    else
+    }else
     if (smb_port_device->serial_config.parity == PARITY_EVEN)
     {
         dcb.Parity = EVENPARITY;
         dcb.fParity = TRUE;
-    }
-    else
+    }else
     {
-        /* odd */
-        dcb.Parity = ODDPARITY;
-        dcb.fParity = TRUE;
+        ///* odd */
+        //dcb.Parity = ODDPARITY;
+        //dcb.fParity = TRUE;
+        dcb.Parity = NOPARITY;
+        dcb.fParity = FALSE;
     }
 
     /* Hardware handshaking left as default settings retrieved */
@@ -299,24 +454,35 @@ static int _modbus_win32device_read(small_modbus_t* smb, uint8_t* data, uint16_t
 {
     small_modbus_port_win32device_t* smb_port_device = (small_modbus_port_win32device_t*)smb->port;
 
-    uint32_t read_len = smb_port_device->read_buff_len;
+    //uint32_t read_len = smb_port_device->read_buff_len;
 
+    //if (read_len > length)
+    //{
+    //    read_len = length; //min
+    //}
+    //if (read_len > 0)
+    //{
+    //    memcpy(data, smb_port_device->read_buff+ smb_port_device->read_buff_pos, read_len);
+    //}
+    //smb_port_device->read_buff_len -= read_len;
+    //smb_port_device->read_buff_pos += read_len;
+    uint32_t read_len = win32device_ringbuffer_data_len(&(smb_port_device->rx_ringbuff));
     if (read_len > length)
     {
         read_len = length; //min
     }
     if (read_len > 0)
     {
-        memcpy(data, smb_port_device->read_buff+ smb_port_device->read_buff_pos, read_len);
+       win32device_ringbuffer_get(&(smb_port_device->rx_ringbuff), data, read_len);
     }
-    smb_port_device->read_buff_len -= read_len;
-    smb_port_device->read_buff_pos += read_len;
     return read_len;
 }
 
 static int _modbus_win32device_flush(small_modbus_t* smb)
 {
     small_modbus_port_win32device_t* smb_port_device = (small_modbus_port_win32device_t*)smb->port;
+
+    win32device_ringbuffer_reset(&(smb_port_device->rx_ringbuff));
 
     smb_port_device->read_buff_len = 0;
     smb_port_device->read_buff_pos = 0;
@@ -365,18 +531,22 @@ static int _modbus_win32device_wait(small_modbus_t* smb, int timeout)
     int max_len = PY_BUF_SIZE;
     int read_len = 0;
 
-    if (ReadFile(smb_port_device->fd, smb_port_device->read_buff, max_len, &read_len, NULL)) {
+    if (ReadFile(smb_port_device->fd, smb_port_device->read_buff, max_len, &read_len, NULL))
+    {
         /* Check if some bytes available */
         if (read_len > 0)
         {
-            //printf("RX[%d] ", read_len);
-            //for (int i = 0; i < read_len; i++)
-            //{
-            //    printf("%02X ", smb_port_device->read_buff[i]);
-            //}
-            //printf("\n");
-            smb_port_device->read_buff_len = read_len;
-            smb_port_device->read_buff_pos = 0;
+            printf("RX[%d] ", read_len);
+            for (int i = 0; i < read_len; i++)
+            {
+                printf("%02X ", smb_port_device->read_buff[i]);
+            }
+            printf("\n");
+            //smb_port_device->read_buff_len = read_len;
+            //smb_port_device->read_buff_pos = 0;
+
+            win32device_ringbuffer_put(&(smb_port_device->rx_ringbuff), smb_port_device->read_buff, read_len);
+
             /* Some bytes read */
             return 1;
         }
@@ -405,6 +575,8 @@ int modbus_port_win32device_init(small_modbus_port_win32device_t* port, const ch
 
     port->device_name = device_name;
     port->serial_config = config_temp;
+
+    win32device_ringbuffer_init(&(port->rx_ringbuff), port->__rx_ringbuff_data,256);
     return 0;
 }
 small_modbus_port_win32device_t* modbus_port_win32device_create(const char* device_name)
