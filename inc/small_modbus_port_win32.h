@@ -1,10 +1,10 @@
-﻿#ifndef _SMALL_MODBUS_PORT_WIN32_H_
+#ifndef _SMALL_MODBUS_PORT_WIN32_H_
 #define _SMALL_MODBUS_PORT_WIN32_H_
 
 #include "stdint.h"
 #include "string.h"
 #include "small_modbus_base.h"
-#include "small_modbus_port.h"
+#include "config_small_modbus.h"
 
 int modbus_init(small_modbus_t* smb, uint8_t core_type, void* port);
 small_modbus_t* modbus_create(uint8_t core_type, void* port);

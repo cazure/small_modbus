@@ -1,10 +1,10 @@
-﻿#ifndef _SMALL_MODBUS_PORT_RTTHREAD_H_
+#ifndef _SMALL_MODBUS_PORT_RTTHREAD_H_
 #define _SMALL_MODBUS_PORT_RTTHREAD_H_
 
 #include "stdint.h"
 #include "string.h"
 #include "small_modbus_base.h"
-#include "small_modbus_port.h"
+#include "config_small_modbus.h"
 
 /*
 * modbus on rtthread
@@ -21,6 +21,7 @@ small_modbus_t* modbus_create(uint8_t core_type, void* port);
 *modbus port device
 */
 #if SMALL_MODBUS_RTTHREAD_USE_DEVICDE
+
 #include <rtthread.h>
 #include <rtdevice.h>
 
@@ -53,18 +54,43 @@ int modbus_set_oflag(small_modbus_t *smb,int oflag);
 *modbus port socket
 */
 #if SMALL_MODBUS_RTTHREAD_USE_SOCKET
-#include <rtthread.h>
-#include <rtdevice.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#if defined(RT_USING_LIBC) || defined(RT_USING_MINILIBC) || defined(RT_LIBC_USING_TIME)
+#include <sys/time.h>
+#include <sys/errno.h>
+#include <sys/ioctl.h>
+#endif
+
+/* support both enable and disable "SAL_USING_POSIX" */
+#if defined(RT_USING_SAL)
+#include <netdb.h>
+#include <sys/socket.h>
+#else
+#include <lwip/netdb.h>
+#include <lwip/sockets.h>
+#endif /* RT_USING_SAL */
+
+#include "ipc/ringbuffer.h"
 
 typedef struct _small_modbus_port_rtsocket   small_modbus_port_rtsocket_t;
 
 struct _small_modbus_port_rtsocket
 {
 	struct _small_modbus_port base;
+	int32_t     socket_fd;
 	const char *hostname;
 	const char *hostport;
-	void        *device;
-	int32_t     socket_fd;
+	
+	struct rt_ringbuffer rx_ringbuff;
+	uint8_t 			rx_ringbuff_pool[256];
+	uint8_t 			rx_temp[256];
+//	char				hostname[128];
+//	char				hostport[16];
 };
 
 int modbus_port_rtsocket_init(small_modbus_port_rtsocket_t*port,char *hostname,char *hostport);

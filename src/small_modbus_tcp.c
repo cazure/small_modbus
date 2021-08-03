@@ -5,6 +5,7 @@
  */
 #include "small_modbus_tcp.h"
 #include "small_modbus_utils.h"
+#include "config_small_modbus.h"
 
 /* Builds a TCP request header */
 static int _tcp_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)

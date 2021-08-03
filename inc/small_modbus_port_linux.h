@@ -1,10 +1,10 @@
-﻿#ifndef _SMALL_MODBUS_PORT_LINUX_H_
+#ifndef _SMALL_MODBUS_PORT_LINUX_H_
 #define _SMALL_MODBUS_PORT_LINUX_H_
 
 #include "stdint.h"
 #include "string.h"
 #include "small_modbus_base.h"
-#include "small_modbus_port.h"
+#include "config_small_modbus.h"
 /*
 * modbus on linux
 */

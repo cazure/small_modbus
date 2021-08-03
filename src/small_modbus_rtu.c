@@ -5,7 +5,7 @@
  */
 #include "small_modbus_rtu.h"
 #include "small_modbus_utils.h"
-#include "small_modbus_port.h"
+#include "config_small_modbus.h"
 
 /* Builds a RTU request header */
 static int _rtu_build_request_header(small_modbus_t *smb,uint8_t *buff,int slave,int fun,int reg,int num)
