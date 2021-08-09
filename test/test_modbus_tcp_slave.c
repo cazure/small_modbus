@@ -1,231 +1,285 @@
 #include "stdio.h"
 #include "string.h"
 #include "board.h"
-#include "small_modbus_rtthread.h"
+#include "small_modbus.h"
+#include "board_virtualIO.h"
 
-
-#define delay_ms        rt_thread_mdelay
-#define MAX_CLIENT_NUM  3
-#define CLIENT_TIMEOUT  10      //鍗曚綅 s
-
-typedef struct
-{
-    int fd;
-    rt_tick_t tick_timeout;
-}client_session_t;
-
-static client_session_t client_session[MAX_CLIENT_NUM];
-
-
-#define DO_MASK		0x10000000
-#define DI_MASK		0x20000000
-#define AO_MASK		0x40000000
-#define AI_MASK		0x80000000
-static rt_device_t bio_dev = {0};  //test device
-
-static small_modbus_t modbus_tcp_slave = {0}; 
-//#define MODBUS_PRINTF(...) 
-#define MODBUS_PRINTF(...)   modbus_debug((&modbus_tcp_slave),__VA_ARGS__)
-
-static uint8_t temp_buff[256];
-
-static int test_modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,int addr,int num,void *read_write_data)
+//从机回调函数,当从机接收到主机的请求(数据校验和地址功能码已经解析完),在这个回调函数内填充数据，返回数据的长度即可
+static int test_modbus_tcp_slave_callback(small_modbus_t *smb,int function_code,int addr,int num,void *read_write_data)
 {
 	int rc = 0;
 	switch(function_code)
 	{
-		case MODBUS_FC_READ_HOLDING_COILS:
+		case MODBUS_FC_READ_HOLDING_COILS:	//读取保持线圈,1bit代表一个线圈
 		{
-			rc = rt_device_read(bio_dev,DO_MASK+addr,temp_buff,num);
-			rc = modbus_array2bit(read_write_data, temp_buff, rc);
+			if((0 <= addr)&&(addr < 10000))	//地址映射，地址从0开始
+			{
+				rc = vio_read_hold_coils(addr,num,read_write_data);
+			}
 		}break;
-		case MODBUS_FC_READ_INPUTS_COILS:
+		case MODBUS_FC_READ_INPUTS_COILS:	//读取只读线圈,1bit代表一个线圈
 		{
-			rc = rt_device_read(bio_dev,DI_MASK+addr,temp_buff,num);
-			rc = modbus_array2bit(read_write_data, temp_buff, rc);
+			if((10000 <= addr)&&(addr < 20000)) //地址映射，地址从10000开始
+			{
+				addr = addr - 10000;
+				rc = vio_read_input_coils(addr,num,read_write_data); 
+			}
 		}break;
-		case MODBUS_FC_READ_HOLDING_REGISTERS:
+		case MODBUS_FC_READ_HOLDING_REGISTERS:	//读取保持寄存器,16bit代表一个寄存器
 		{
-			rc = rt_device_read(bio_dev,AO_MASK+addr,temp_buff,num);
-			rc = modbus_array2reg(read_write_data, temp_buff, rc);
+			if((40000 <= addr)&&(addr < 50000)) //地址映射，地址从40000开始
+			{
+				addr = addr - 40000;
+				rc = vio_read_hold_regs(addr,num,read_write_data); 
+			}
 		}break;
-		case MODBUS_FC_READ_INPUT_REGISTERS:
+		case MODBUS_FC_READ_INPUT_REGISTERS:	//读取输入寄存器,16bit代表一个寄存器
 		{
-			rc = rt_device_read(bio_dev,AI_MASK+addr,temp_buff,num);
-			rc = modbus_array2reg(read_write_data, temp_buff, rc);
+			if((30000 <= addr)&&(addr < 40000)) //地址映射，地址从30000开始
+			{
+				addr = addr - 30000;
+				rc = vio_read_input_regs(addr,num,read_write_data); 
+			}
 		}break;
-		
-		case MODBUS_FC_WRITE_SINGLE_COIL:
+		case MODBUS_FC_WRITE_SINGLE_COIL:	//写单个线圈,1bit代表一个线圈
+		case MODBUS_FC_WRITE_MULTIPLE_COILS:		//写线圈,1bit代表一个线圈
 		{
-			uint8_t value1 = num?1:0;
-			rc = rt_device_write(bio_dev,DO_MASK+addr,&value1,1);
+			if((0 <= addr)&&(addr < 10000))	//地址映射，地址从0开始
+			{
+				rc = vio_write_hold_coils(addr,num,read_write_data); 
+			}
 		}break;
-		case MODBUS_FC_WRITE_SINGLE_REGISTER:
-		{
-			uint16_t value2 = num;
-			rc = rt_device_write(bio_dev,AO_MASK+addr,&value2,1);
-		}break;
-		
-		case MODBUS_FC_WRITE_MULTIPLE_COILS:
-		{
-			rc = modbus_bit2array(temp_buff,read_write_data,num);
-			rc = rt_device_write(bio_dev,DO_MASK+addr,temp_buff,num);
-		}break;
-		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
-		{
-			rc = modbus_reg2array(temp_buff,read_write_data,num);
-			rc = rt_device_write(bio_dev,AO_MASK+addr,temp_buff,num);
+		case MODBUS_FC_WRITE_SINGLE_REGISTER:	//写单个寄存器,16bit代表一个寄存器
+		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:	//写寄存器,16bit代表一个寄存器
+		{	
+			if((40000 <= addr)&&(addr < 50000))	//地址映射，地址从40000开始
+			{
+				addr = addr - 40000;
+				rc = vio_write_hold_regs(addr,num,read_write_data); 
+			}
 		}break;
 	}	
 	if(rc<0)
 	{
-		MODBUS_PRINTF("callback fail %d\n",rc);
+		//MODBUS_PRINTF("callback fail %d\n",rc);
 	}
 	return rc;
 }
 
+static small_modbus_t modbus_tcp_slave = {0}; 
+//#define MODBUS_PRINTF(...) 
+//#define MODBUS_PRINTF(...)   modbus_debug((&modbus_tcp_slave),__VA_ARGS__)
+#define MODBUS_PRINTF(...)   modbus_debug_info((&modbus_tcp_slave),__VA_ARGS__)
+
+//static void test_modbus_tcp_slave_thread(void *param)
+//{
+//	int rc = 0;
+//	int count = 0;
+//	small_modbus_t *smb_slave = param;
+//	
+//	modbus_init(smb_slave,MODBUS_CORE_TCP,
+//			modbus_port_rtsocket_create(MODBUS_DEVICE_SLAVE,"0.0.0.0", "502")); // init modbus  TCP mode
+//	
+//	modbus_set_slave(smb_slave,1); //set slave addr
+//	
+//	rt_kprintf("modbus slave addr:%d\n",1);
+//	
+//	int server_socket = -1;
+//	int client_socket = -1;
+//	while(1)
+//	{
+//		server_socket = modbus_tcp_listen(smb_slave,1); // 
+//		MODBUS_PRINTF("modbus_tcp_listen:%d\n",server_socket);
+//		while(1)
+//		{
+//			client_socket = modbus_tcp_accept(smb_slave,server_socket);
+//			MODBUS_PRINTF("modbus_tcp_accept:%d\n",client_socket);
+//			
+//			modbus_tcp_set_socket(smb_slave,client_socket); //set client_socket
+//			while(modbus_tcp_status(smb_slave) == MODBUS_OK)
+//			{
+//				rc = modbus_slave_wait_handle(smb_slave,test_modbus_tcp_slave_callback,MODBUS_WAIT_FOREVER);
+//				if (rc > 0)
+//				{
+//					count++;
+//				}else
+//				{
+//					if(rc == MODBUS_ERROR_READ)
+//					{
+//						break; //disconnect
+//					}
+//					modbus_error_recovery(smb_slave);
+//				}
+//			}
+//			MODBUS_PRINTF("modbus_disconnect client :%d\n",client_socket);
+//			modbus_tcp_set_socket(smb_slave,client_socket); //set client_socket
+//			modbus_tcp_disconnect(smb_slave); //disconnect client_socket
+//			client_socket = -1;
+//		}
+//		
+//		MODBUS_PRINTF("modbus_disconnect server :%d\n",server_socket);
+//		modbus_tcp_set_socket(smb_slave,server_socket); //set server_socket
+//		modbus_tcp_disconnect(smb_slave); //disconnect server_socket
+//		server_socket = -1;
+//	}
+//}
+
+
+#ifdef RT_USING_POSIX
+
+#include <dfs_posix.h>
+#include <dfs_poll.h>
+#include <dfs_select.h>
+
+#include <sys/time.h>
+#include <sal_socket.h>
+
+#define MAX_CLIENT_NUM 3
+
 static void test_modbus_tcp_slave_thread(void *param)
 {
-    int server_fd = -1;
-    int max_fd = -1;
-    int rc;
-    fd_set readset;
-    struct timeval select_timeout;
-
-    rt_thread_mdelay(3000);
-
-    for (int i = 0; i < MAX_CLIENT_NUM; i++)
-    {
-        client_session[i].fd = -1;
-        client_session[i].tick_timeout = rt_tick_get() + rt_tick_from_millisecond(CLIENT_TIMEOUT * 1000);
-    }
-
-    select_timeout.tv_sec = 1;
-    select_timeout.tv_usec = 0;
-
-    modbus_tcp_init(&modbus_tcp_slave,NULL,&modbus_config);
-    modbus_tcp_config(&modbus_tcp_slave, 1,"0.0.0.0", 502);
-    modbus_set_slave(&modbus_tcp_slave, 1);
-_mbtcp_start:
-    modbus_connect(&modbus_tcp_slave);
-
-    server_fd = modbus_config.socket;
-    while (1)
-    {
-        max_fd = -1;
-        FD_ZERO(&readset);
-        FD_SET(server_fd, &readset);
-
-        if(max_fd < server_fd)
-            max_fd = server_fd;
-
-        for (int i = 0; i < MAX_CLIENT_NUM; i++)
-        {
-            if(client_session[i].fd >= 0)
-            {
-                FD_SET(client_session[i].fd, &readset);
-                if(max_fd < client_session[i].fd)
-                    max_fd = client_session[i].fd;
-            }
-        }
-
-        rc = modbus_tcp_select(&modbus_tcp_slave,max_fd + 1, &readset, RT_NULL, RT_NULL, &select_timeout);
-        if(rc < 0)
-        {
-            goto _mbtcp_restart;
-        }
-        else if(rc > 0)
-        {
-            if(FD_ISSET(server_fd, &readset))
-            {
-                int client_sock_fd = modbus_tcp_accept(&modbus_tcp_slave);
-                if(client_sock_fd >= 0)
-                {
-                    int index = -1;
-                    for (int i = 0; i < MAX_CLIENT_NUM; i++)
-                    {
-                        if(client_session[i].fd < 0)
-                        {
-                            index = i;
-                            break;
-                        }
-                    }
-                    if(index >= 0)
-                    {
-                        client_session[index].fd = client_sock_fd;
-                        client_session[index].tick_timeout = rt_tick_get() + rt_tick_from_millisecond(CLIENT_TIMEOUT * 1000);
-                    }
-                    else
-                    {
-                        close(client_sock_fd);
-                    }
-                }
-            }
-
-            for (int i = 0; i < MAX_CLIENT_NUM; i++)
-            {
-                if(client_session[i].fd >= 0)
-                {
-                    if(FD_ISSET(client_session[i].fd, &readset))
-                    {
-                        modbus_tcp_set_socket(&modbus_tcp_slave, client_session[i].fd);
-                        rc = modbus_wait(&modbus_tcp_slave, &modbus_tcp_mapping);
-                        if(rc < 0)
-                        {
-                            rt_kprintf("modbus_wait:%d\n",rc);
-                            close(client_session[i].fd);
-                            client_session[i].fd = -1;
-                        }
-                        else
-                        {
-                            client_session[i].tick_timeout = rt_tick_get() + rt_tick_from_millisecond(CLIENT_TIMEOUT * 1000);
-                        }
-                    }
-                }
-            }
-        }
-
-        // 瀹㈡埛绔秴鏃舵湭鏀跺埌鏁版嵁鏂紑
-        for(int i =0;i<MAX_CLIENT_NUM;i++)
-        {
-            if(client_session[i].fd >= 0)
-            {
-                //瓒呮椂
-                if((rt_tick_get() - client_session[i].tick_timeout) < (RT_TICK_MAX / 2))
-                {
-                    close(client_session[i].fd);
-                    client_session[i].fd = -1;
-                }
-            }
-        }
-    }
-
-_mbtcp_restart:
-    modbus_disconnect(&modbus_tcp_slave);
-
-    for(int i =0;i<MAX_CLIENT_NUM;i++)
-    {
-        if(client_session[i].fd >= 0)
-        {
-            close(client_session[i].fd);
-            client_session[i].fd = -1;
-        }
-    }
-    rt_thread_mdelay(5000);
-    goto _mbtcp_start;
-
-
+	int rc = 0;
+	int count = 0;
+	small_modbus_t *smb_slave = param;
+	
+	modbus_init(smb_slave,MODBUS_CORE_TCP,
+			modbus_port_rtsocket_create(MODBUS_DEVICE_SLAVE,"0.0.0.0", "502")); // init modbus  TCP mode
+	
+	modbus_set_slave(smb_slave,1); //set slave addr
+	
+	rt_kprintf("modbus slave addr:%d\n",1);
+	
+	int max_fd = -1;
+	int server_socket = -1;
+	int client_socket[MAX_CLIENT_NUM] = {-1};
+	
+	fd_set readset;
+	struct timeval select_timeout;
+	select_timeout.tv_sec = 1;
+	select_timeout.tv_usec = 0;
+	
+	for (int i = 0; i < MAX_CLIENT_NUM; i++)
+	{
+		client_socket[i] = -1;
+	}
+	while(1)
+	{
+		server_socket = modbus_tcp_listen(smb_slave,MAX_CLIENT_NUM); // 
+		MODBUS_PRINTF("modbus_tcp_listen:%d\n",server_socket);
+		while(1)
+		{
+			max_fd = -1;
+			FD_ZERO(&readset);
+			FD_SET(server_socket, &readset);
+			
+			if(max_fd < server_socket)
+			{
+				max_fd = server_socket;
+			}
+			
+			for (int i = 0; i < MAX_CLIENT_NUM; i++)
+			{
+				if(client_socket[i] >= 0)
+				{
+					FD_SET(client_socket[i], &readset);
+					if(max_fd < client_socket[i])
+						max_fd = client_socket[i];
+				}
+			}
+			
+			rc = select(max_fd + 1, &readset, RT_NULL, RT_NULL, &select_timeout);
+			if(rc < 0)
+			{
+				MODBUS_PRINTF("modbus_tcp_select:%d\n",rc);
+					// goto _mbtcp_restart;
+				break;
+			}
+			else if(rc > 0)
+			{
+				if(FD_ISSET(server_socket, &readset))
+				{
+					int client_sock_fd = modbus_tcp_accept(smb_slave, server_socket);
+					MODBUS_PRINTF("modbus_tcp_accept:%d\n",client_sock_fd);
+					if(client_sock_fd >= 0)
+					{
+						int index = -1;
+						for (int i = 0; i < MAX_CLIENT_NUM; i++)
+						{
+							if(client_socket[i] < 0)
+							{
+								index = i;
+								break;
+							}
+						}
+						if(index >= 0)
+						{
+							client_socket[index] = client_sock_fd;
+						}
+						else
+						{
+							MODBUS_PRINTF("modbus client max :%d close:%d\n",MAX_CLIENT_NUM,client_sock_fd);
+							modbus_tcp_set_socket(smb_slave,client_sock_fd); //set server_socket
+							modbus_tcp_disconnect(smb_slave); //disconnect server_socket
+						}
+					}
+				}
+				for (int i = 0; i < MAX_CLIENT_NUM; i++)
+				{
+					if(client_socket[i] >= 0)
+					{
+						if(FD_ISSET(client_socket[i] , &readset))
+						{
+							modbus_tcp_set_socket(smb_slave,client_socket[i]);
+							
+							rc = modbus_slave_wait_handle(smb_slave,test_modbus_tcp_slave_callback,MODBUS_WAIT_FOREVER);
+							if (rc > 0)
+							{
+								count++;
+							}else
+							{
+								if(rc == MODBUS_ERROR_READ)
+								{
+									MODBUS_PRINTF("modbus_disconnect client :%d\n",client_socket[i]);
+									modbus_tcp_set_socket(smb_slave,client_socket[i]); //set client_socket
+									modbus_tcp_disconnect(smb_slave); //disconnect client_socket
+									client_socket[i] = -1;
+								}
+								modbus_error_recovery(smb_slave);
+							}
+						}
+					}
+				}// for
+			}
+		} // while
+		
+		
+		for (int i = 0; i < MAX_CLIENT_NUM; i++)
+		{
+			if(client_socket[i] >= 0 )
+			{
+				MODBUS_PRINTF("modbus_disconnect client :%d\n",client_socket[i]);
+				modbus_tcp_set_socket(smb_slave,client_socket[i]); //set server_socket
+				modbus_tcp_disconnect(smb_slave); //disconnect server_socket
+				client_socket[i] = -1;
+			}
+		}
+		MODBUS_PRINTF("modbus_disconnect server :%d\n",server_socket);
+		modbus_tcp_set_socket(smb_slave,server_socket); //set server_socket
+		modbus_tcp_disconnect(smb_slave); //disconnect server_socket
+		server_socket = -1;
+	}
 }
+
+#endif
 
 int test_modbus_tcp_slave(void)
 {
 	rt_thread_t tid;
-	
-	bio_dev = rt_device_find("bio");
-	rt_device_open(bio_dev,0);
 	
 	tid = rt_thread_create("slave",test_modbus_tcp_slave_thread, &modbus_tcp_slave,2048,20, 10);
 	if (tid != RT_NULL)
 			rt_thread_startup(tid);
 	return 0;
 }
+
+
