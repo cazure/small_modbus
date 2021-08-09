@@ -1,8 +1,9 @@
-﻿/*
+/*
  * Change Logs:
  * Date           Author       Notes
  * 2020-08-21     chenbin      small modbus the first version
  * 2021-06-02     chenbin      small modbus
+ * 2021-08-06     chenbin      small modbus
  */
 #ifndef _SMALL_MODBUS_BASE_H_
 #define _SMALL_MODBUS_BASE_H_
@@ -78,6 +79,21 @@ enum portType
 	MODBUS_PORT_SOCKET		= 2
 };
 
+enum deviceType
+{
+	MODBUS_DEVICE_NONE	= 0,
+	MODBUS_DEVICE_SLAVE		= 1,
+	MODBUS_DEVICE_MASTER	= 2
+};
+
+enum modbusMagic
+{
+	MODBUS_MAGIC				= 0x4243424D,  //"MBCB"
+	MODBUS_CORE_MAGIC		= 0x4343424D,  //"MBCC"
+	MODBUS_PORT_MAGIC		= 0x5050424D,  //"MBPP"
+};
+
+
 #define MODBUS_BROADCAST_ADDRESS    0
 
 /* Modbus_Application_Protocol_V1_1b.pdf (chapter 6 section 1 page 12)
@@ -143,6 +159,7 @@ typedef struct _small_modbus_port   small_modbus_port_t; //modbus port (rtthread
 
 struct _small_modbus_core
 {
+	const uint32_t magic;
 	const uint16_t type;
 	const uint16_t len_header;
 	const uint16_t len_checksum;
@@ -156,6 +173,7 @@ struct _small_modbus_core
 
 struct _small_modbus_port
 {
+	const uint32_t magic;
 	const uint32_t type;
 	int (*open)(small_modbus_t *smb);
 	int (*close)(small_modbus_t *smb);
@@ -167,9 +185,11 @@ struct _small_modbus_port
 
 struct _small_modbus
 {
-	uint8_t			mode;
+	uint32_t		modbus_magic;
+	uint16_t 		device_mode;
 	uint8_t     slave_addr;
 	uint8_t     debug_level;
+	
 	uint16_t    transfer_id;
 	uint16_t    protocol_id;
 	

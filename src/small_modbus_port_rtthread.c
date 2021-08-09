@@ -34,8 +34,8 @@ int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...)
 */
 int modbus_init(small_modbus_t* smb, uint8_t core_type, void* port)
 {
-    small_modbus_port_t* smb_port;
-    if (smb && core_type && port)
+    small_modbus_port_t* smb_port = port;
+    if (smb && core_type && smb_port)
     {
         _modbus_init(smb);
         if ((core_type == MODBUS_CORE_RTU) || (core_type == MODBUS_CORE_TCP))  // check core type
@@ -53,7 +53,6 @@ int modbus_init(small_modbus_t* smb, uint8_t core_type, void* port)
         {
             return 0;
         }
-        smb_port = port;
         if ((smb_port->type == MODBUS_PORT_DEVICE) || (smb_port->type == MODBUS_PORT_SOCKET))  // check port type
         {
             smb->port = smb_port;
@@ -131,17 +130,21 @@ static int _modbus_rtdevice_close(small_modbus_t *smb)
 static int _modbus_rtdevice_write(small_modbus_t *smb,uint8_t *data,uint16_t length)
 {
 	small_modbus_port_rtdevice_t *smb_port_device = (small_modbus_port_rtdevice_t*)smb->port;
-	rt_enter_critical();
+	//rt_enter_critical();
 	
 	if(smb_port_device->rts_set)
 			smb_port_device->rts_set(1);
-		
+	
+	rt_enter_critical();
+	
 	rt_device_write(smb_port_device->device,0,data,length);
+	
+	rt_exit_critical();
 	
 	if(smb_port_device->rts_set)
 			smb_port_device->rts_set(0);
 	
-	rt_exit_critical();
+	//rt_exit_critical();
 	return length;
 }
 
@@ -179,11 +182,20 @@ static int _modbus_rtdevice_wait(small_modbus_t *smb,int timeout)
 	return rc;
 }
 
+
+small_modbus_port_rtdevice_t * modbus_port_rtdevice_get(small_modbus_t *smb)
+{
+	if( (smb->port->type == MODBUS_PORT_DEVICE) && (smb->port->magic == MODBUS_PORT_MAGIC) )
+	{
+		return (small_modbus_port_rtdevice_t*)smb->port;
+	}
+	return NULL;
+}
+
 int modbus_port_rtdevice_init(small_modbus_port_rtdevice_t *port,const char *device_name)
 {
-	//rt_memcpy(&port->base,&_port_device_default,sizeof(small_modbus_port_t));
-	
 	(*(uint32_t *)&(port->base.type)) = MODBUS_PORT_DEVICE;
+	(*(uint32_t *)&(port->base.magic)) = MODBUS_PORT_MAGIC;
 	port->base.open = _modbus_rtdevice_open;
 	port->base.close = _modbus_rtdevice_close;
 	port->base.read = _modbus_rtdevice_read;
@@ -200,6 +212,15 @@ int modbus_port_rtdevice_init(small_modbus_port_rtdevice_t *port,const char *dev
 	return 0;
 }
 
+int modbus_port_rtdevice_deinit(small_modbus_port_rtdevice_t *port)
+{
+	if(port->device)
+	{
+		rt_device_close(port->device);
+	}
+	return 0;
+}
+
 small_modbus_port_rtdevice_t *modbus_port_rtdevice_create(const char *device_name)
 {
 	small_modbus_port_rtdevice_t *smb_port_device = rt_malloc_align(sizeof(small_modbus_port_rtdevice_t),4);
@@ -212,16 +233,18 @@ small_modbus_port_rtdevice_t *modbus_port_rtdevice_create(const char *device_nam
 	return NULL;
 }
 
-small_modbus_port_rtdevice_t * modbus_port_rtdevice_get(small_modbus_t *smb)
+int modbus_port_rtdevice_delete(void *port)
 {
-	if(smb->port->type == MODBUS_PORT_DEVICE)
+	small_modbus_port_rtdevice_t *port_device = port;
+	if( port_device && (port_device->base.type == MODBUS_PORT_DEVICE) && (port_device->base.magic == MODBUS_PORT_MAGIC))
 	{
-		return (small_modbus_port_rtdevice_t*)smb->port;
+		modbus_port_rtdevice_deinit(port_device);
+		rt_free_align(port_device);
 	}
-	return NULL;
+	return 0;
 }
 
-int modbus_set_rts(small_modbus_t *smb,int (*rts_set)(int on))
+int modbus_rtu_set_serial_rts(small_modbus_t *smb,int (*rts_set)(int on))
 {
 	small_modbus_port_rtdevice_t *smb_port_device = modbus_port_rtdevice_get(smb);
 	if(smb_port_device)
@@ -230,7 +253,18 @@ int modbus_set_rts(small_modbus_t *smb,int (*rts_set)(int on))
 	}
 	return 0;
 }
-int modbus_set_serial_config(small_modbus_t *smb,struct serial_configure *serial_config)
+
+int modbus_rtu_set_serial_name(small_modbus_t *smb,const char *device_name)
+{
+	small_modbus_port_rtdevice_t *smb_port_device = modbus_port_rtdevice_get(smb);
+	if(smb_port_device)
+	{
+		modbus_port_rtdevice_init(smb_port_device,device_name);
+	}
+	return 0;
+}
+
+int modbus_rtu_set_serial_config(small_modbus_t *smb,struct serial_configure *serial_config)
 {
 	small_modbus_port_rtdevice_t *smb_port_device = modbus_port_rtdevice_get(smb);
 	if(smb_port_device)
@@ -242,7 +276,7 @@ int modbus_set_serial_config(small_modbus_t *smb,struct serial_configure *serial
 	}
 	return 0;
 }
-int modbus_set_oflag(small_modbus_t *smb,int oflag)
+int modbus_rtu_set_oflag(small_modbus_t *smb,int oflag)
 {
 	small_modbus_port_rtdevice_t *smb_port_device = modbus_port_rtdevice_get(smb);
 	if(smb_port_device)
@@ -279,69 +313,14 @@ int modbus_set_oflag(small_modbus_t *smb,int oflag)
 #include <lwip/sockets.h>
 #endif /* RT_USING_SAL */
 
-
 static int _modbus_rtsocket_open(small_modbus_t *smb)
 {
-	small_modbus_port_rtsocket_t *smb_port_socket = (small_modbus_port_rtsocket_t *)smb->port;
-	
-	int ret = 0;
-	unsigned long mode = 0;
-	struct addrinfo hints, *addr_list, *cur;
-	struct timeval timeout;
-	
-	if(smb_port_socket->socket_fd < 0)
-	{
-		/* Do name resolution with both IPv6 and IPv4 */
-		memset(&hints, 0, sizeof(hints));
-		hints.ai_family = AF_INET;
-		hints.ai_socktype = SOCK_STREAM;
-		hints.ai_protocol = IPPROTO_TCP;
-		//hints.ai_protocol = PROTOCOL_TLS;
-
-		ret = getaddrinfo(smb_port_socket->hostname, smb_port_socket->hostport, &hints, &addr_list);
-		if (ret != 0)
-		{
-				rt_kprintf("modbus rtsocket getaddrinfo fail [%d]\n",ret);
-				return ret;
-		}
-		for (cur = addr_list; cur != NULL; cur = cur->ai_next)
-		{
-			smb_port_socket->socket_fd = socket(cur->ai_family,SOCK_STREAM, IPPROTO_TCP);
-			if (smb_port_socket->socket_fd < 0)
-			{
-				continue;
-			}
-			mode = 0;
-			ioctlsocket(smb_port_socket->socket_fd, FIONBIO, &mode);
-			
-			ret = connect(smb_port_socket->socket_fd, cur->ai_addr, cur->ai_addrlen);
-			rt_kprintf("net connect socket:%d  ret:%d\n",smb_port_socket->socket_fd,ret);
-			if (ret == 0)
-			{
-				break;//连接成功
-			}
-			closesocket(smb_port_socket->socket_fd);
-		}
-		freeaddrinfo(addr_list);
-		
-		timeout.tv_sec = smb->timeout_frame /1000;
-		timeout.tv_usec = (smb->timeout_frame%1000)*1000;
-		
-		setsockopt(smb_port_socket->socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *) &timeout,sizeof(timeout));
-		
-		setsockopt(smb_port_socket->socket_fd, SOL_SOCKET, SO_SNDTIMEO, (void *) &timeout,sizeof(timeout));
-	}
-	return 0;
+	return modbus_tcp_connect(smb);
 }
 
 static int _modbus_rtsocket_close(small_modbus_t *smb)
 {
-	small_modbus_port_rtsocket_t *smb_port_socket = (small_modbus_port_rtsocket_t *)smb->port;
-	if(smb_port_socket->socket_fd >= 0)
-	{
-		closesocket( smb_port_socket->socket_fd );
-	}
-	return 0;
+	return modbus_tcp_disconnect(smb);
 }
 
 static int _modbus_rtsocket_write(small_modbus_t *smb,uint8_t *data,uint16_t length)
@@ -394,6 +373,8 @@ static int _modbus_rtsocket_flush(small_modbus_t *smb)
 static int _modbus_rtsocket_wait(small_modbus_t *smb,int timeout)
 {
 	int rc = -1;
+	int socket_status = 0;
+	socklen_t slen;
 	small_modbus_port_rtsocket_t *smb_port_socket = (small_modbus_port_rtsocket_t *)smb->port;
 	
 	struct timeval tv = {
@@ -405,18 +386,20 @@ static int _modbus_rtsocket_wait(small_modbus_t *smb,int timeout)
 			tv.tv_sec = 0;
 			tv.tv_usec = 1000*10;
 	}
-	setsockopt(smb_port_socket->socket_fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv, sizeof(struct timeval));
+	setsockopt(smb_port_socket->socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&tv, sizeof(struct timeval));
 
 	rc = recv(smb_port_socket->socket_fd, smb_port_socket->rx_temp, sizeof(smb_port_socket->rx_temp), 0);
 	if(rc <= 0)
 	{
-		if(!(errno == EINTR || errno == EWOULDBLOCK || errno == EAGAIN))
+		getsockopt(smb_port_socket->socket_fd, SOL_SOCKET, SO_ERROR, (void *)&socket_status , &slen );
+		
+		if(!(socket_status == EINTR || socket_status == EWOULDBLOCK || socket_status == EAGAIN))
 		{
-				//rt_kprintf("net recv err :%d\n",rc);
+				modbus_debug_error(smb,"rtsocket[%d] recv err(%d)\n", smb_port_socket->socket_fd, socket_status);
 				rc = MODBUS_ERROR_READ;
 		}else
 		{
-				//rt_kprintf("net recv timeout :%d\n",rc);
+				//rt_kprintf("rtsocket timeout :%d\n",rc);
 				rc = MODBUS_TIMEOUT;
 		}
 	}else
@@ -427,9 +410,19 @@ static int _modbus_rtsocket_wait(small_modbus_t *smb,int timeout)
 }
 
 
-int modbus_port_socket_init(small_modbus_port_rtsocket_t *port,char *hostname,char *hostport)
+small_modbus_port_rtsocket_t * modbus_port_rtsocket_get(small_modbus_t *smb)
 {
-	(*(uint32_t *)&(port->base.type)) = MODBUS_PORT_DEVICE;
+	if( (smb->port->type == MODBUS_PORT_SOCKET) && (smb->port->magic == MODBUS_PORT_MAGIC))
+	{
+		return (small_modbus_port_rtsocket_t*)smb->port;
+	}
+	return NULL;
+}
+
+int modbus_port_rtsocket_init(small_modbus_port_rtsocket_t *port,int devicemode,char *hostname,char *hostport)
+{
+	(*(uint32_t *)&(port->base.type)) = MODBUS_PORT_SOCKET;
+	(*(uint32_t *)&(port->base.magic)) = MODBUS_PORT_MAGIC;
 	port->base.open = _modbus_rtsocket_open;
 	port->base.close = _modbus_rtsocket_close;
 	port->base.read = _modbus_rtsocket_read;
@@ -439,8 +432,6 @@ int modbus_port_socket_init(small_modbus_port_rtsocket_t *port,char *hostname,ch
 	
 	rt_ringbuffer_init( &(port->rx_ringbuff) ,port->rx_ringbuff_pool, sizeof(port->rx_ringbuff_pool) );  //static init ringbuff
 	
-//	rt_strncpy(port->hostname,hostname, rt_strnlen(hostname,sizeof(port->hostname)));  //copy hostname
-//	rt_strncpy(port->hostport,hostport, rt_strnlen(hostport,sizeof(port->hostport)));  //copy hostport
 	if(hostname)
 	{
 		port->hostname = hostname;
@@ -449,30 +440,253 @@ int modbus_port_socket_init(small_modbus_port_rtsocket_t *port,char *hostname,ch
 	{
 		port->hostport = hostport;
 	}
-	
+	port->devicemode = devicemode;
 	port->socket_fd = -1;
 	return 0;
 }
 
-small_modbus_port_rtsocket_t *modbus_port_rtsocket_create(char *hostname,char *hostport)
+int modbus_port_rtsocket_deinit(small_modbus_port_rtsocket_t *port)
+{
+	if(port->socket_fd >= 0)
+	{
+		closesocket( port->socket_fd );
+		port->socket_fd = -1;
+	}
+	return 0;
+}
+
+small_modbus_port_rtsocket_t *modbus_port_rtsocket_create(int devicemode, char *hostname, char *hostport)
 {
 	small_modbus_port_rtsocket_t *port_socket = rt_malloc_align(sizeof(small_modbus_port_rtsocket_t),4);
 	if(port_socket)
 	{
 		rt_memset(port_socket,0,sizeof(small_modbus_port_rtsocket_t));
-		modbus_port_socket_init(port_socket,hostname,hostport);
+		modbus_port_rtsocket_init(port_socket, devicemode, hostname, hostport);
 		return port_socket;
 	}
 	return NULL;
 }
 
-small_modbus_port_rtsocket_t * modbus_port_rtsocket_get(small_modbus_t *smb)
+int modbus_port_rtsocket_delete(void *port)
 {
-	if(smb->port->type == MODBUS_PORT_SOCKET)
+	small_modbus_port_rtsocket_t *port_socket = port;
+	if( port_socket && (port_socket->base.type == MODBUS_PORT_SOCKET) && (port_socket->base.magic == MODBUS_PORT_MAGIC))
 	{
-		return (small_modbus_port_rtsocket_t*)smb->port;
+		modbus_port_rtsocket_deinit(port_socket);
+		rt_free_align(port_socket);
 	}
-	return NULL;
+	return 0;
+}
+
+
+/*
+* modbus tcp api
+*/
+int modbus_tcp_status(small_modbus_t *smb)
+{
+	small_modbus_port_rtsocket_t *port_socket = (small_modbus_port_rtsocket_t *)smb->port;
+	
+	int socket_status = 0;
+	socklen_t slen;
+	
+	if( (port_socket) && (port_socket->socket_fd >= 0) )
+	{
+		getsockopt(port_socket->socket_fd, SOL_SOCKET, SO_ERROR, (void *)&socket_status , &slen );
+	}
+	return socket_status;
+}
+
+
+int modbus_tcp_disconnect(small_modbus_t *smb)
+{
+	small_modbus_port_rtsocket_t *port_socket = (small_modbus_port_rtsocket_t *)smb->port;
+	if( (port_socket) && (port_socket->socket_fd >= 0) )
+	{
+		closesocket( port_socket->socket_fd );
+		port_socket->socket_fd = -1;
+	}
+	return 0;
+}
+
+int modbus_tcp_connect(small_modbus_t *smb)
+{
+	small_modbus_port_rtsocket_t *port_socket = modbus_port_rtsocket_get(smb);
+	if( (port_socket) && (port_socket->socket_fd < 0) )
+	{
+		int ret = 0;
+		unsigned long mode = 0;
+		struct addrinfo hints, *addr_list, *cur;
+		struct timeval timeout;
+		
+		struct sockaddr_in * socket_addr;
+		char addr_str[64];
+		
+		/* Do name resolution with both IPv6 and IPv4 */
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
+		//hints.ai_protocol = PROTOCOL_TLS;
+
+		ret = getaddrinfo(port_socket->hostname, port_socket->hostport, &hints, &addr_list);
+		if (ret != 0)
+		{
+				modbus_debug_info(smb,"rtsocket getaddrinfo fail [%d]\n",ret);
+				return ret;
+		}
+		for (cur = addr_list; cur != NULL; cur = cur->ai_next)
+		{
+			port_socket->socket_fd = socket(cur->ai_family,SOCK_STREAM, IPPROTO_TCP);
+			if (port_socket->socket_fd < 0)
+			{
+				continue;
+			}
+			mode = 0;
+			ioctlsocket(port_socket->socket_fd, FIONBIO, &mode);
+			
+			ret = connect(port_socket->socket_fd, cur->ai_addr, cur->ai_addrlen);
+		
+			socket_addr = (struct sockaddr_in *)(cur->ai_addr);
+			
+			inet_ntoa_r(socket_addr->sin_addr.s_addr, addr_str, sizeof(addr_str) - 1);
+			
+			modbus_debug_info(smb,"rtsocket[%d] connect: %s:%d  ret:%d\n", port_socket->socket_fd, addr_str ,ntohs(socket_addr->sin_port),ret);
+			if (ret == 0)
+			{
+				break;//连接成功
+			}
+			closesocket(port_socket->socket_fd);
+		}
+		freeaddrinfo(addr_list);
+		
+		timeout.tv_sec = smb->timeout_frame /1000;
+		timeout.tv_usec = (smb->timeout_frame%1000)*1000;
+		
+		setsockopt(port_socket->socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *) &timeout,sizeof(timeout));
+		
+		setsockopt(port_socket->socket_fd, SOL_SOCKET, SO_SNDTIMEO, (void *) &timeout,sizeof(timeout));
+	}
+	return port_socket->socket_fd;
+}
+
+int modbus_tcp_listen(small_modbus_t *smb, int max_connection)
+{
+	small_modbus_port_rtsocket_t *port_socket = modbus_port_rtsocket_get(smb);
+	if( (port_socket) && (port_socket->socket_fd < 0) )
+	{
+		int ret = 0;
+		unsigned long mode = 0;
+		struct addrinfo hints, *addr_list, *cur;
+		
+		struct sockaddr_in * socket_addr;
+		char addr_str[64];
+		
+		/* Do name resolution with both IPv6 and IPv4 */
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
+		//hints.ai_protocol = PROTOCOL_TLS;
+
+		ret = getaddrinfo(port_socket->hostname, port_socket->hostport, &hints, &addr_list);
+		if (ret != 0)
+		{
+				modbus_debug_info(smb,"rtsocket getaddrinfo fail [%d]\n",ret);
+				return ret;
+		}
+		for (cur = addr_list; cur != NULL; cur = cur->ai_next)
+		{
+			port_socket->socket_fd = socket(cur->ai_family,SOCK_STREAM, IPPROTO_TCP);
+			if (port_socket->socket_fd < 0)
+			{
+				continue;
+			}
+			mode = 0;
+			ioctlsocket(port_socket->socket_fd, FIONBIO, &mode);
+			mode = 1;
+			setsockopt(port_socket->socket_fd, SOL_SOCKET, SO_REUSEADDR,(void *)&mode, sizeof (mode));
+			
+			ret = bind(port_socket->socket_fd, cur->ai_addr, cur->ai_addrlen);
+			if(ret == 0)
+			{
+				ret = listen(port_socket->socket_fd, max_connection);
+				
+				socket_addr = (struct sockaddr_in *)(cur->ai_addr);
+				inet_ntoa_r(socket_addr->sin_addr.s_addr, addr_str, sizeof(addr_str) - 1);
+				
+				modbus_debug_info(smb,"rtsocket[%d] listen: %s:%d  ret:%d\n", port_socket->socket_fd, addr_str ,ntohs(socket_addr->sin_port),ret);
+				if (ret == 0)
+				{
+					break;//连接成功
+				}
+			}else
+			{
+				modbus_debug_info(smb,"rtsocket[%d] bind:err ret:%d\n", port_socket->socket_fd, ret);
+			}
+			closesocket(port_socket->socket_fd);
+		}
+		freeaddrinfo(addr_list);
+	}
+	return port_socket->socket_fd;
+}
+
+int modbus_tcp_accept(small_modbus_t *smb,int socket_fd)
+{
+	small_modbus_port_rtsocket_t *port_socket = modbus_port_rtsocket_get(smb);
+	
+	struct sockaddr_storage addr;
+  socklen_t addrlen;
+	int ret_socket = -1;
+	
+	if( (port_socket) && (socket_fd >= 0) )
+	{
+		ret_socket = accept( socket_fd, (struct sockaddr *)&addr, &addrlen);
+		if(ret_socket < 0)
+		{
+			closesocket(ret_socket);
+		}
+	}
+	return ret_socket;
+}
+
+
+
+int modbus_tcp_get_socket(small_modbus_t *smb)
+{
+	small_modbus_port_rtsocket_t *port_socket = modbus_port_rtsocket_get(smb);
+	if(port_socket)
+	{
+		return port_socket->socket_fd;
+	}
+	return 0;
+}
+
+int modbus_tcp_set_socket(small_modbus_t *smb,int socket)
+{
+	small_modbus_port_rtsocket_t *port_socket = modbus_port_rtsocket_get(smb);
+	if(port_socket)
+	{
+		port_socket->socket_fd = socket;
+	}
+	return 0;
+}
+
+int modbus_tcp_set_socket_block(small_modbus_t *smb,int isblock)
+{
+	small_modbus_port_rtsocket_t *port_socket = modbus_port_rtsocket_get(smb);
+	unsigned long mode = 0;
+	if(port_socket)
+	{
+		if(isblock)
+		{	
+			mode = 0;
+		}else
+		{
+			mode = 1;
+		}
+		ioctlsocket(port_socket->socket_fd, FIONBIO, &mode);
+	}
+	return 0;
 }
 
 #endif

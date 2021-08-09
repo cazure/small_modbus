@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Change Logs:
  * Date           Author       Notes
  * 2020-08-21     chenbin      small modbus the first version
@@ -10,9 +10,11 @@ int _modbus_init(small_modbus_t *smb)
 {
 	if(smb != NULL)
 	{
+		smb->modbus_magic = MODBUS_MAGIC;
+		smb->device_mode = MODBUS_DEVICE_SLAVE;
 		smb->transfer_id = 0;
 		smb->protocol_id = 0;
-		smb->debug_level = 0;
+		smb->debug_level = 1;  //log level info
 		if(smb->timeout_frame==0)
 		{
 				smb->timeout_frame = 100;

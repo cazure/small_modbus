@@ -26,11 +26,12 @@ static int _rtu_build_response_header(small_modbus_t *smb,uint8_t *buff,int slav
     buff[1] = fun;
     return _MODBUS_RTU_PRESET_RSP_LENGTH;
 }
-
+#if (SMALL_MODBUS_CRC_BYTE_SWAP)
 static inline uint16_t bswap_16(uint16_t x)
 {
     return (x >> 8) | (x << 8);
 }
+#endif
 
 static int _rtu_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 {
@@ -85,14 +86,15 @@ static int _rtu_check_wait_response(small_modbus_t *smb,uint8_t *buff,int length
 
 const small_modbus_core_t _modbus_rtu_core =
 {
-    .type           = MODBUS_CORE_RTU,
+    .magic     = MODBUS_CORE_MAGIC,
+    .type      = MODBUS_CORE_RTU,
     .len_header     = _MODBUS_RTU_HEADER_LENGTH,
     .len_checksum   = _MODBUS_RTU_CHECKSUM_LENGTH,
     .len_adu_max    = _MODBUS_RTU_MAX_ADU_LENGTH,
     .build_request_header   = _rtu_build_request_header,
     .build_response_header  = _rtu_build_response_header,
-    .check_send_pre     = _rtu_check_send_pre,
-    .check_wait_request   = _rtu_check_wait_request,
-    .check_wait_response   = _rtu_check_wait_response
+    .check_send_pre    			= _rtu_check_send_pre,
+    .check_wait_request   	= _rtu_check_wait_request,
+    .check_wait_response   	= _rtu_check_wait_response
 };
 

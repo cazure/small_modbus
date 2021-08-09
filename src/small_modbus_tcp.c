@@ -120,15 +120,16 @@ static int _tcp_check_wait_response(small_modbus_t *smb,uint8_t *buff,int length
 
 const small_modbus_core_t _modbus_tcp_core =
 {
-    .type           = MODBUS_CORE_TCP,
+    .magic     = MODBUS_CORE_MAGIC,
+    .type      = MODBUS_CORE_TCP,
     .len_header     = _MODBUS_TCP_HEADER_LENGTH,
     .len_checksum   = _MODBUS_TCP_CHECKSUM_LENGTH,
     .len_adu_max    = _MODBUS_TCP_MAX_ADU_LENGTH,
     .build_request_header   = _tcp_build_request_header,
     .build_response_header  = _tcp_build_response_header,
-    .check_send_pre     = _tcp_check_send_pre,
-    .check_wait_request    = _tcp_check_wait_request,
-    .check_wait_response   = _tcp_check_wait_response
+    .check_send_pre     		= _tcp_check_send_pre,
+    .check_wait_request    	= _tcp_check_wait_request,
+    .check_wait_response   	= _tcp_check_wait_response
 };
 
 
