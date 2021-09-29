@@ -99,8 +99,8 @@ uint16_t modbus_crc16(uint8_t *buffer, uint16_t buffer_length)
 				CRC^=0xA001;
 			}
 			else
-			{ 
-        CRC>>=1;
+			{
+				CRC>>=1;
 			}
 		}
 	}
@@ -172,6 +172,11 @@ int modbus_check_addr_num(uint8_t function,uint16_t address,uint16_t num)
 				return 1;
 			}
 		}break;
+		case MODBUS_FC_WRITE_SINGLE_COIL:
+		case MODBUS_FC_WRITE_SINGLE_REGISTER:
+		{
+			return 1;
+		}
 	}
 	return 0;
 }
