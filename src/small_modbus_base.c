@@ -209,143 +209,147 @@ int modbus_start_request(small_modbus_t *smb,uint8_t *request,int function,int a
 /* master wait for confirmation message */
 int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
 {
-    int rc = 0;
-    int wait_time = 0;
-    int read_want = 0;
-    int read_length = 0;
-    int read_position = 0;
-    int function = 0;
+	int rc = 0;
+	int wait_time = 0;
+	int read_want = 0;
+	int read_length = 0;
+	int read_position = 0;
+	int function = 0;
 
-    wait_time = smb->timeout_frame;
-    read_want = smb->core->len_header + 1;  //header + function code
-	
-    while (read_want != 0)
-    {
+	wait_time = smb->timeout_frame;
+	read_want = smb->core->len_header + 1;  //header + function code
+
+	while (read_want != 0)
+	{
 		rc = modbus_want_read(smb,response + read_length,read_want,wait_time);
-        if(rc <= MODBUS_OK)
-        {
+		if(rc <= MODBUS_OK)
+		{
 			if(rc < MODBUS_TIMEOUT)
 			{
 				modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
 			}
-            return rc;
-        }
-        if(rc != read_want)
-        {
-            modbus_debug_info(smb,"[%d]read(%d) less\n",rc,read_want);
-        }
+			return rc;
+		}
+		if(rc != read_want)
+		{
+			modbus_debug_info(smb,"[%d]read(%d) less\n",rc,read_want);
+		}
 		
-        read_length += rc;  //sum byte length
-        read_want -= rc;    //sub byte length
+		read_length += rc;  //sum byte length
+		read_want -= rc;    //sub byte length
 		
-        if(read_want == 0)//read ok
-        {
-            if(read_position==0)/* Function code position */
-            {
-                function = response[smb->core->len_header];
-                switch (function)
-                {
-                case MODBUS_FC_READ_HOLDING_COILS:
-                case MODBUS_FC_READ_INPUTS_COILS:
-                case MODBUS_FC_READ_HOLDING_REGISTERS:
-                case MODBUS_FC_READ_INPUT_REGISTERS:
-                    read_want = 1; //read data length(1)
-                    break;
-                case MODBUS_FC_WRITE_SINGLE_COIL:
-                case MODBUS_FC_WRITE_SINGLE_REGISTER:
-                case MODBUS_FC_WRITE_MULTIPLE_COILS:
-                case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
-                    read_want = 4;  //write addr(2)+num(2)
-                    break;
-                case MODBUS_FC_MASK_WRITE_REGISTER:
-                    read_want = 6;  //data length
-                    break;
-                default:
-                    read_want = 1;  //read data length(1)
-                }
-                read_position = 1;
-            }
-            else if(read_position==1)/* Data */
-            {
-                function = response[smb->core->len_header];
-                switch(function)
-                {
-                case MODBUS_FC_READ_HOLDING_COILS:
-                case MODBUS_FC_READ_INPUTS_COILS:
-                case MODBUS_FC_READ_HOLDING_REGISTERS:
-                case MODBUS_FC_READ_INPUT_REGISTERS:
-                    read_want = response[smb->core->len_header+1];
-                break;
-                default:
-                    read_want = 0;
-                }
-                read_want += smb->core->len_checksum;
-                if((read_want+read_length)> smb->core->len_adu_max )
-                {
-                    modbus_debug_error(smb,"More than ADU %d > %d\n",(read_want+read_length),smb->core->len_adu_max);
-                    return MODBUS_FAIL;
-                }
-                read_position = 2;
-            }
-        }
+		if(read_want == 0)//read ok
+		{
+			if(read_position==0)/* Function code position */
+			{
+				function = response[smb->core->len_header];
+				switch (function)
+				{
+					case MODBUS_FC_READ_HOLDING_COILS:
+					case MODBUS_FC_READ_INPUTS_COILS:
+					case MODBUS_FC_READ_HOLDING_REGISTERS:
+					case MODBUS_FC_READ_INPUT_REGISTERS:
+							read_want = 1; //read data length(1)
+							break;
+					case MODBUS_FC_WRITE_SINGLE_COIL:
+					case MODBUS_FC_WRITE_SINGLE_REGISTER:
+					case MODBUS_FC_WRITE_MULTIPLE_COILS:
+					case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
+							read_want = 4;  //write addr(2)+num(2)
+							break;
+					case MODBUS_FC_MASK_WRITE_REGISTER:
+							read_want = 6;  //data length
+							break;
+					default:
+							read_want = 1;  //read data length(1)
+				}
+				read_position = 1;
+			}
+			else if(read_position==1)/* Data */
+			{
+				function = response[smb->core->len_header];
+				switch(function)
+				{
+					case MODBUS_FC_READ_HOLDING_COILS:
+					case MODBUS_FC_READ_INPUTS_COILS:
+					case MODBUS_FC_READ_HOLDING_REGISTERS:
+					case MODBUS_FC_READ_INPUT_REGISTERS:
+							read_want = response[smb->core->len_header+1];
+					break;
+					case MODBUS_FC_WRITE_SINGLE_COIL:
+					case MODBUS_FC_WRITE_SINGLE_REGISTER:
+					case MODBUS_FC_WRITE_MULTIPLE_COILS:
+					case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
+					default:
+							read_want = 0;
+				}
+				read_want += smb->core->len_checksum;
+				if((read_want+read_length)> smb->core->len_adu_max )
+				{
+						modbus_debug_error(smb,"More than ADU %d > %d\n",(read_want+read_length),smb->core->len_adu_max);
+						return MODBUS_FAIL;
+				}
+				read_position = 2;
+			}
+		}
 		if(read_want)
 		{
 			wait_time = smb->timeout_byte * read_want; // byte_time * byte_num
 		}
-    }
-    return smb->core->check_wait_response(smb,response,read_length);
+	}
+	return smb->core->check_wait_response(smb,response,read_length);
 }
 /* master handle confirmation message */
 int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_len,uint8_t *response,uint16_t response_len,void *read_data)
 {
-    uint8_t request_function = request[smb->core->len_header];
-    uint8_t response_function = response[smb->core->len_header];
-    uint16_t calc_length = smb->core->len_header + smb->core->len_checksum ; // header + checksum
-    uint16_t rw_num = 0;
-    uint16_t byte_num = 0;
-    uint16_t temp = 0;
-    if(response_function >= 0x80)
-    {
-        if((response_function - 0x80) == request_function)
-        {
-            modbus_debug_error(smb,"request function code %d\n",request_function);
-        }
-        modbus_debug_error(smb,"response exception code %d\n",-response_function);
-        return -response_function;
-    }
-    if(request_function == response_function)
-    {
-        switch (request_function)
-        {
-            case MODBUS_FC_READ_HOLDING_COILS:
-            case MODBUS_FC_READ_INPUTS_COILS:
-                {
-                    temp = (request[smb->core->len_header+3]<<8)|(request[smb->core->len_header+4]);  //data length
-                    calc_length += (2 + (temp / 8) + ((temp % 8) ? 1 : 0));
-                }
-                break;
-            case MODBUS_FC_WRITE_AND_READ_REGISTERS:
-            case MODBUS_FC_READ_HOLDING_REGISTERS:
-            case MODBUS_FC_READ_INPUT_REGISTERS:
-                {
-                    temp = (request[smb->core->len_header+3]<<8)|(request[smb->core->len_header+4]);  //data length
-                    calc_length += (2 + 2*temp);
-                }
-                break;
-            case MODBUS_FC_READ_EXCEPTION_STATUS:
-                calc_length += 3;
-                break;
-            case MODBUS_FC_MASK_WRITE_REGISTER:
-                calc_length += 7;
-                break;
-            default:
-                calc_length += 5;
-        }
-        if(calc_length == response_len)
-        {
-            //read data
-            switch (response_function)
-            {
+	uint8_t request_function = request[smb->core->len_header];
+	uint8_t response_function = response[smb->core->len_header];
+	uint16_t calc_length = smb->core->len_header + smb->core->len_checksum ; // header + checksum
+	uint16_t rw_num = 0;
+	uint16_t byte_num = 0;
+	uint16_t temp = 0;
+	if(response_function >= 0x80)
+	{
+		if((response_function - 0x80) == request_function)
+		{
+			modbus_debug_error(smb,"request function code %d\n",request_function);
+		}
+		modbus_debug_error(smb,"response exception code %d\n",-response_function);
+		return -response_function;
+	}
+	if(request_function == response_function)
+	{
+		switch (request_function)
+		{
+			case MODBUS_FC_READ_HOLDING_COILS:
+			case MODBUS_FC_READ_INPUTS_COILS:
+			{
+				temp = (request[smb->core->len_header+3]<<8)|(request[smb->core->len_header+4]);  //data length
+				calc_length += (2 + (temp / 8) + ((temp % 8) ? 1 : 0));
+			}
+			break;
+			case MODBUS_FC_WRITE_AND_READ_REGISTERS:
+			case MODBUS_FC_READ_HOLDING_REGISTERS:
+			case MODBUS_FC_READ_INPUT_REGISTERS:
+			{
+				temp = (request[smb->core->len_header+3]<<8)|(request[smb->core->len_header+4]);  //data length
+				calc_length += (2 + 2*temp);
+			}
+			break;
+			case MODBUS_FC_READ_EXCEPTION_STATUS:
+				calc_length += 3;
+			break;
+			case MODBUS_FC_MASK_WRITE_REGISTER:
+				calc_length += 7;
+			break;
+			default:
+				calc_length += 5;
+		}
+		if(calc_length == response_len)
+		{
+			//read data
+			switch (response_function)
+			{
 				case MODBUS_FC_READ_HOLDING_COILS:
 				case MODBUS_FC_READ_INPUTS_COILS:
 				{
@@ -390,23 +394,23 @@ int modbus_handle_confirm(small_modbus_t *smb,uint8_t *request,uint16_t request_
 				{
 					return MODBUS_OK;
 				}
-            }
-        }
-    }
-    return MODBUS_FAIL_CONFIRM;
+			}
+		}
+	}
+	return MODBUS_FAIL_CONFIRM;
 }
 
 /* master read */
 int modbus_read_bits(small_modbus_t *smb, int addr, int num,uint8_t *read_data)
 {
-    int request_len = 0;
-    int response_len = 0;
-    uint8_t *request = smb->write_buff;
-    uint8_t *response = smb->read_buff;
+	int request_len = 0;
+	int response_len = 0;
+	uint8_t *request = smb->write_buff;
+	uint8_t *response = smb->read_buff;
 
-    request_len = modbus_start_request(smb,request,MODBUS_FC_READ_HOLDING_COILS,addr,num,NULL);
-    if(request_len < 0)
-    {
+	request_len = modbus_start_request(smb,request,MODBUS_FC_READ_HOLDING_COILS,addr,num,NULL);
+	if(request_len < 0)
+	{
 		return request_len;
 	}
 	response_len = modbus_wait_confirm(smb, response);
@@ -420,14 +424,14 @@ int modbus_read_bits(small_modbus_t *smb, int addr, int num,uint8_t *read_data)
 /* master read */
 int modbus_read_input_bits(small_modbus_t *smb, int addr, int num,uint8_t *read_data)
 {
-    int request_len = 0;
-    int response_len = 0;
-    uint8_t *request = smb->write_buff;
-    uint8_t *response = smb->read_buff;
+	int request_len = 0;
+	int response_len = 0;
+	uint8_t *request = smb->write_buff;
+	uint8_t *response = smb->read_buff;
 
-    request_len = modbus_start_request(smb,request,MODBUS_FC_READ_INPUTS_COILS,addr,num,NULL);
-    if(request_len < 0)
-    {
+	request_len = modbus_start_request(smb,request,MODBUS_FC_READ_INPUTS_COILS,addr,num,NULL);
+	if(request_len < 0)
+	{
 		return request_len;
 	}
 	response_len = modbus_wait_confirm(smb, response);
@@ -440,14 +444,14 @@ int modbus_read_input_bits(small_modbus_t *smb, int addr, int num,uint8_t *read_
 /* master read */
 int modbus_read_registers(small_modbus_t *smb, int addr, int num,uint16_t *read_data)
 {
-    int request_len = 0;
-    int response_len = 0;
-    uint8_t *request = smb->write_buff;
-    uint8_t *response = smb->read_buff;
+	int request_len = 0;
+	int response_len = 0;
+	uint8_t *request = smb->write_buff;
+	uint8_t *response = smb->read_buff;
 
-    request_len = modbus_start_request(smb,request,MODBUS_FC_READ_HOLDING_REGISTERS,addr,num,NULL);
-    if(request_len < 0)
-    {
+	request_len = modbus_start_request(smb,request,MODBUS_FC_READ_HOLDING_REGISTERS,addr,num,NULL);
+	if(request_len < 0)
+	{
 		return request_len;
 	}
 	response_len = modbus_wait_confirm(smb, response);
@@ -480,15 +484,15 @@ int modbus_read_input_registers(small_modbus_t *smb, int addr, int num,uint16_t 
 /* master write */
 int modbus_write_bit(small_modbus_t *smb, int addr,int write_status)
 {
-    int request_len = 0;
-    int response_len = 0;
-    uint8_t *request = smb->write_buff;
-    uint8_t *response = smb->read_buff;
-    int status = write_status?0xFF00:0x0;
+	int request_len = 0;
+	int response_len = 0;
+	uint8_t *request = smb->write_buff;
+	uint8_t *response = smb->read_buff;
+	int status = write_status?0xFF00:0x0;
 
-    request_len = modbus_start_request(smb,request,MODBUS_FC_WRITE_SINGLE_COIL,addr,1,&status);
-    if(request_len < 0)
-    {
+	request_len = modbus_start_request(smb,request,MODBUS_FC_WRITE_SINGLE_COIL,addr,1,&status);
+	if(request_len < 0)
+	{
 		return request_len;
 	}
 	response_len = modbus_wait_confirm(smb, response);
@@ -501,15 +505,15 @@ int modbus_write_bit(small_modbus_t *smb, int addr,int write_status)
 /* master write */
 int modbus_write_register(small_modbus_t *smb, int addr,int write_value)
 {
-    int request_len = 0;
-    int response_len = 0;
-    uint8_t *request = smb->write_buff;
-    uint8_t *response = smb->read_buff;
-    int value = write_value;
+	int request_len = 0;
+	int response_len = 0;
+	uint8_t *request = smb->write_buff;
+	uint8_t *response = smb->read_buff;
+	int value = write_value;
 
-    request_len = modbus_start_request(smb,request,MODBUS_FC_WRITE_SINGLE_REGISTER,addr,1,&value);
-    if(request_len < 0)
-    {
+	request_len = modbus_start_request(smb,request,MODBUS_FC_WRITE_SINGLE_REGISTER,addr,1,&value);
+	if(request_len < 0)
+	{
 		return request_len;
 	}
 	response_len = modbus_wait_confirm(smb, response);
@@ -522,14 +526,14 @@ int modbus_write_register(small_modbus_t *smb, int addr,int write_value)
 /* master write */
 int modbus_write_bits(small_modbus_t *smb, int addr, int num,uint8_t *write_data)
 {
-    int request_len = 0;
-    int response_len = 0;
-    uint8_t *request = smb->write_buff;
-    uint8_t *response = smb->read_buff;
+	int request_len = 0;
+	int response_len = 0;
+	uint8_t *request = smb->write_buff;
+	uint8_t *response = smb->read_buff;
 
-    request_len = modbus_start_request(smb,request,MODBUS_FC_WRITE_MULTIPLE_COILS,addr,num,write_data);
-    if(request_len < 0)
-    {
+	request_len = modbus_start_request(smb,request,MODBUS_FC_WRITE_MULTIPLE_COILS,addr,num,write_data);
+	if(request_len < 0)
+	{
 		return request_len;
 	}
 	response_len = modbus_wait_confirm(smb, response);
@@ -542,14 +546,14 @@ int modbus_write_bits(small_modbus_t *smb, int addr, int num,uint8_t *write_data
 /* master write */
 int modbus_write_registers(small_modbus_t *smb, int addr, int num,uint16_t *write_data)
 {
-    int request_len = 0;
-    int response_len = 0;
-    uint8_t *request = smb->write_buff;
-    uint8_t *response = smb->read_buff;
+	int request_len = 0;
+	int response_len = 0;
+	uint8_t *request = smb->write_buff;
+	uint8_t *response = smb->read_buff;
 
-    request_len = modbus_start_request(smb,request,MODBUS_FC_WRITE_MULTIPLE_REGISTERS,addr,num,write_data);
-    if(request_len < 0)
-    {
+	request_len = modbus_start_request(smb,request,MODBUS_FC_WRITE_MULTIPLE_REGISTERS,addr,num,write_data);
+	if(request_len < 0)
+	{
 		return request_len;
 	}
 	response_len = modbus_wait_confirm(smb, response);
@@ -569,49 +573,47 @@ int modbus_write_and_read_registers(small_modbus_t *smb, int write_addr, int wri
     return MODBUS_FAIL;
 }
 
-
 /* slave wait query data */
 int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t wait_time)
 {
-    int rc = 0;
-		int read_step = 0;
-    int read_want = 0;
-    int read_length = 0;
-    int function = 0;
+	int rc = 0;
+	int read_step = 0;
+	int read_want = 0;
+	int read_length = 0;
+	int function = 0;
 
-    read_want = smb->core->len_header + 1;  //header + function code
-	
-    while (read_want != 0)
-    {
+	read_want = smb->core->len_header + 1;  //header + function code
+
+	while (read_want != 0)
+	{
 		rc = modbus_want_read(smb,request + read_length,read_want,wait_time);
-        if(rc <= MODBUS_OK)
-        {
+		if(rc <= MODBUS_OK)
+		{
 			if(rc < MODBUS_TIMEOUT)
 			{
 				modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
 			}
-            return rc;
-        }
-        if(rc != read_want)
-        {
-            modbus_debug_info(smb,"[%d]read(%d) less\n",rc,read_want);
-        }
+			return rc;
+		}
+		if(rc != read_want)
+		{
+			modbus_debug_info(smb,"[%d]read(%d) less\n",rc,read_want);
+		}
 
-        read_length += rc;  //sum byte length
-        read_want -= rc;    //sub byte length
+		read_length += rc;  //sum byte length
+		read_want -= rc;    //sub byte length
 
-        if(read_want == 0)//read ok
-        {
+		if(read_want == 0)//read ok
+		{
 			switch(read_step)
 			{
 				case 0:/* Function code position */
 				{
 					function = request[smb->core->len_header];
-					if(function <= MODBUS_FC_WRITE_SINGLE_REGISTER)
+					if(function <= MODBUS_FC_WRITE_SINGLE_REGISTER) // 0x01 - 0x06
 					{
 						read_want = 4;
-					}else if((function == MODBUS_FC_WRITE_MULTIPLE_COILS) ||
-							 (function == MODBUS_FC_WRITE_MULTIPLE_REGISTERS) )
+					}else if((function == MODBUS_FC_WRITE_MULTIPLE_COILS) || (function == MODBUS_FC_WRITE_MULTIPLE_REGISTERS) )
 					{
 						read_want = 5;
 					}else if(function == MODBUS_FC_MASK_WRITE_REGISTER)
@@ -633,8 +635,7 @@ int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t wait_time)
 				case 1:
 				{
 					function = request[smb->core->len_header];
-					if((function == MODBUS_FC_WRITE_MULTIPLE_COILS)||
-						(function == MODBUS_FC_WRITE_MULTIPLE_REGISTERS))
+					if((function == MODBUS_FC_WRITE_MULTIPLE_COILS)|| (function == MODBUS_FC_WRITE_MULTIPLE_REGISTERS))
 					{
 						read_want = request[smb->core->len_header + 5];
 					}else if(function == MODBUS_FC_WRITE_AND_READ_REGISTERS)
@@ -653,13 +654,13 @@ int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t wait_time)
 					}
 				}break;
 			}
-        }
+		}
 		if(read_want)
 		{
 			wait_time = smb->timeout_byte * read_want; // byte_time * byte_num
 		}
-    }
-    return smb->core->check_wait_request(smb,request,read_length);
+	}
+	return smb->core->check_wait_request(smb,request,read_length);
 }
 
 /* slave handle query data for callback */
@@ -668,7 +669,7 @@ int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_le
 	//uint8_t *request = smb->read_buff;
 	uint16_t response_len = 0;
 	uint8_t *response = smb->write_buff;
-	uint8_t query_slave = smb->slave_addr;//request[smb->core->len_header-1];
+	uint8_t query_slave = smb->slave_addr;
 	uint8_t query_function = request[smb->core->len_header];
 	uint16_t query_address = 0;
 	uint16_t query_num = 0;
@@ -682,25 +683,22 @@ int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_le
 		case MODBUS_FC_READ_HOLDING_COILS:
 		case MODBUS_FC_READ_INPUTS_COILS:
 		{
-			query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];  //请求地址
-			query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];  //请求  数量
-			 //检查查询地址数量
+			query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];
+			query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];
 			if(modbus_check_addr_num(query_function,query_address,query_num))
 			{
-				 //准备应答数据头,计算数据长度
 				response_len = smb->core->build_response_header(smb,response,query_slave,query_function);
-				 //回调,返回的是读取到的线圈数量
 				if(slave_callback)
-						response_exception = slave_callback(smb,query_function,query_address,query_num, (response+response_len+1) );
-				 //检查返回地址数量
+				{
+					response_exception = slave_callback(smb,query_function,query_address,query_num, (response+response_len+1) );
+				}
 				if(modbus_check_addr_num(query_function,query_address,response_exception))
 				{ 
-					//计算数据使用字节数
 					bytes = (response_exception / 8) + ((response_exception % 8) ? 1 : 0);
 					response[response_len] = bytes;
-					//主机转modbus
+					
 					modbus_coil_h2m((response+response_len+1),(response+response_len+1),response_exception);
-					//返回长度
+					
 					response_len +=  (bytes+1);
 				}else
 				{
@@ -716,8 +714,8 @@ int modbus_slave_handle(small_modbus_t *smb,uint8_t *request,uint16_t request_le
 		case MODBUS_FC_READ_HOLDING_REGISTERS:
 		case MODBUS_FC_READ_INPUT_REGISTERS:
 		{
-			query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];  //请求地址
-			query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];  //请求  数量
+			query_address = (request[smb->core->len_header + 1] << 8) + request[smb->core->len_header + 2];
+			query_num = (request[smb->core->len_header + 3] << 8) + request[smb->core->len_header + 4];
 			 //检查查询地址数量
 			if(modbus_check_addr_num(query_function,query_address,query_num))
 			{
