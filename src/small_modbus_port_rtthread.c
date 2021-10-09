@@ -160,7 +160,10 @@ static int _modbus_rtdevice_flush(small_modbus_t *smb)
 	small_modbus_port_rtdevice_t* smb_port_device = (small_modbus_port_rtdevice_t*)smb->port;
 	
 	int rc = rt_device_read(smb_port_device->device,0,smb->read_buff,MODBUS_MAX_ADU_LENGTH);
-	
+	if(rc > 0)
+	{
+		
+	}
 	rt_sem_control(&(smb_port_device->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
 	return rc;
 }

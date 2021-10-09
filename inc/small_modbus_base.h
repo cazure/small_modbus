@@ -206,9 +206,9 @@ struct _small_modbus
 int _modbus_init(small_modbus_t *smb);
 int _modbus_debug(small_modbus_t *smb,int level,const char *fmt, ...);
 
-#define modbus_debug(smb,...)           _modbus_debug(smb,2,__VA_ARGS__)
-#define modbus_debug_info(smb,...)      _modbus_debug(smb,1,__VA_ARGS__)
-#define modbus_debug_error(smb,...)     _modbus_debug(smb,0,__VA_ARGS__)
+#define modbus_debug(smb,...)           _modbus_debug(smb,3,__VA_ARGS__)
+#define modbus_debug_info(smb,...)      _modbus_debug(smb,2,__VA_ARGS__)
+#define modbus_debug_error(smb,...)     _modbus_debug(smb,1,__VA_ARGS__)
 
 /* base api */
 int modbus_connect(small_modbus_t *smb);

@@ -14,7 +14,7 @@ int _modbus_init(small_modbus_t *smb)
 		smb->device_mode = MODBUS_DEVICE_SLAVE;
 		smb->transfer_id = 0;
 		smb->protocol_id = 0;
-		smb->debug_level = 1;  //log level info
+		smb->debug_level = 2;  //log level info
 		if(smb->timeout_frame==0)
 		{
 				smb->timeout_frame = 100;
@@ -87,7 +87,7 @@ int modbus_want_read(small_modbus_t *smb,uint8_t *buff,uint16_t len,int32_t wait
 {
 	uint8_t *read_buff = buff;
 	uint16_t read_len = 0;
-	int rc = 0;
+	int rc = MODBUS_FAIL;
 	
 	do{
 		read_len += modbus_read(smb,read_buff+read_len , len - read_len);
@@ -222,12 +222,9 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
 	while (read_want != 0)
 	{
 		rc = modbus_want_read(smb,response + read_length,read_want,wait_time);
-		if(rc <= MODBUS_OK)
+		if(rc < MODBUS_OK)
 		{
-			if(rc < MODBUS_TIMEOUT)
-			{
-				modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
-			}
+			modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
 			return rc;
 		}
 		if(rc != read_want)
@@ -261,7 +258,9 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
 							read_want = 6;  //data length
 							break;
 					default:
+					{
 							read_want = 1;  //read data length(1)
+					}break;
 				}
 				read_position = 1;
 			}
@@ -280,8 +279,13 @@ int modbus_wait_confirm(small_modbus_t *smb,uint8_t *response)
 					case MODBUS_FC_WRITE_SINGLE_REGISTER:
 					case MODBUS_FC_WRITE_MULTIPLE_COILS:
 					case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
-					default:
+					{
 							read_want = 0;
+					}break;
+					default:
+					{
+							read_want = 0;
+					}break;
 				}
 				read_want += smb->core->len_checksum;
 				if((read_want+read_length)> smb->core->len_adu_max )
@@ -587,12 +591,9 @@ int modbus_slave_wait(small_modbus_t *smb,uint8_t *request,int32_t wait_time)
 	while (read_want != 0)
 	{
 		rc = modbus_want_read(smb,request + read_length,read_want,wait_time);
-		if(rc <= MODBUS_OK)
+		if(rc < MODBUS_OK)
 		{
-			if(rc < MODBUS_TIMEOUT)
-			{
-				modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
-			}
+			modbus_debug_error(smb,"[%d]read(%d) error\n",rc,read_want);
 			return rc;
 		}
 		if(rc != read_want)
