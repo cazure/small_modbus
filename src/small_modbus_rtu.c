@@ -26,19 +26,10 @@ static int _rtu_build_response_header(small_modbus_t *smb,uint8_t *buff,int slav
     buff[1] = fun;
     return _MODBUS_RTU_PRESET_RSP_LENGTH;
 }
-#if (SMALL_MODBUS_CRC_BYTE_SWAP)
-static inline uint16_t bswap_16(uint16_t x)
-{
-    return (x >> 8) | (x << 8);
-}
-#endif
 
 static int _rtu_check_send_pre(small_modbus_t *smb,uint8_t *buff,int length)
 {
     uint16_t crc = modbus_crc16(buff,length);
-#if (SMALL_MODBUS_CRC_BYTE_SWAP)
-    crc = bswap_16(crc);
-#endif
     buff[length++] = crc & 0x00FF; //LOW BYTE 
     buff[length++] = crc >> 8;   //HIGH BYTE
     return length;
@@ -48,9 +39,6 @@ static int _rtu_check_wait_request(small_modbus_t *smb,uint8_t *buff,int length)
 {
     uint16_t crc_recv = ( (uint16_t)(buff[length - 2]&0x00FF) + (uint16_t)(buff[length - 1] << 8) ); //LOW BYTE HIGH BYTE
     uint16_t crc_cal = modbus_crc16(buff, length - 2);
-#if (SMALL_MODBUS_CRC_BYTE_SWAP)
-    crc_cal = bswap_16(crc_cal);
-#endif
     if (crc_cal != crc_recv)
     {
         modbus_debug_error(smb,"crc  0x%04X != 0x%04X\n", crc_cal, crc_recv );
@@ -68,9 +56,6 @@ static int _rtu_check_wait_response(small_modbus_t *smb,uint8_t *buff,int length
 {
     uint16_t crc_recv = ( (uint16_t)(buff[length - 2]&0x00FF) + (uint16_t)(buff[length - 1] << 8) ); //LOW BYTE HIGH BYTE
     uint16_t crc_cal = modbus_crc16(buff, length - 2);
-#if (SMALL_MODBUS_CRC_BYTE_SWAP)
-    crc_cal = bswap_16(crc_cal);
-#endif
     if (crc_cal != crc_recv)
     {
         modbus_debug_error(smb, "crc  0x%04X != 0x%04X\n", crc_cal, crc_recv);

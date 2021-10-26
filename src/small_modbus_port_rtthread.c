@@ -130,21 +130,19 @@ static int _modbus_rtdevice_close(small_modbus_t *smb)
 static int _modbus_rtdevice_write(small_modbus_t *smb,uint8_t *data,uint16_t length)
 {
 	small_modbus_port_rtdevice_t *smb_port_device = (small_modbus_port_rtdevice_t*)smb->port;
-	//rt_enter_critical();
-	
+
 	if(smb_port_device->rts_set)
 			smb_port_device->rts_set(1);
 	
-	rt_enter_critical();
+	rt_enter_critical(); // poll write start
 	
 	rt_device_write(smb_port_device->device,0,data,length);
 	
-	rt_exit_critical();
+	rt_exit_critical(); // poll write end
 	
 	if(smb_port_device->rts_set)
 			smb_port_device->rts_set(0);
 	
-	//rt_exit_critical();
 	return length;
 }
 
@@ -160,10 +158,7 @@ static int _modbus_rtdevice_flush(small_modbus_t *smb)
 	small_modbus_port_rtdevice_t* smb_port_device = (small_modbus_port_rtdevice_t*)smb->port;
 	
 	int rc = rt_device_read(smb_port_device->device,0,smb->read_buff,MODBUS_MAX_ADU_LENGTH);
-	if(rc > 0)
-	{
-		
-	}
+	
 	rt_sem_control(&(smb_port_device->rx_sem), RT_IPC_CMD_RESET, RT_NULL);
 	return rc;
 }
@@ -329,18 +324,7 @@ static int _modbus_rtsocket_close(small_modbus_t *smb)
 static int _modbus_rtsocket_write(small_modbus_t *smb,uint8_t *data,uint16_t length)
 {
 	small_modbus_port_rtsocket_t *smb_port_socket = (small_modbus_port_rtsocket_t *)smb->port;
-
-	struct timeval tv = {
-			smb->timeout_frame / 1000,
-			(smb->timeout_frame % 1000) * 1000
-	};
-
-	if (tv.tv_sec < 0 || (tv.tv_sec == 0 && tv.tv_usec <= 0)){
-			tv.tv_sec = 0;
-			tv.tv_usec = 1000*10;
-	}
-	setsockopt(smb_port_socket->socket_fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv,sizeof(struct timeval));
-
+	
 	send(smb_port_socket->socket_fd, data, length, 0);
 
 	return length;
@@ -392,18 +376,24 @@ static int _modbus_rtsocket_wait(small_modbus_t *smb,int timeout)
 	setsockopt(smb_port_socket->socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&tv, sizeof(struct timeval));
 
 	rc = recv(smb_port_socket->socket_fd, smb_port_socket->rx_temp, sizeof(smb_port_socket->rx_temp), 0);
-	if(rc <= 0)
+	if(rc == 0) //socket wait_close
 	{
+		modbus_debug_error(smb,"rtsocket[%d] recv rc:%d wait_close\n",smb_port_socket->socket_fd, rc);
+		rc = MODBUS_ERROR_READ;
+	}else
+	if(rc < 0) //socket error
+	{
+		slen = sizeof(socket_status);
 		getsockopt(smb_port_socket->socket_fd, SOL_SOCKET, SO_ERROR, (void *)&socket_status , &slen );
 		
-		if(!(socket_status == EINTR || socket_status == EWOULDBLOCK || socket_status == EAGAIN))
-		{
-				modbus_debug_error(smb,"rtsocket[%d] recv err(%d)\n", smb_port_socket->socket_fd, socket_status);
-				rc = MODBUS_ERROR_READ;
-		}else
+		if((socket_status == 0 ||socket_status == EINTR || socket_status == EWOULDBLOCK || socket_status == EAGAIN))
 		{
 				//rt_kprintf("rtsocket timeout :%d\n",rc);
 				rc = MODBUS_TIMEOUT;
+		}else
+		{
+				modbus_debug_error(smb,"rtsocket[%d] recv err(%d)\n", smb_port_socket->socket_fd, socket_status);
+				rc = MODBUS_ERROR_READ;
 		}
 	}else
 	{
@@ -494,6 +484,7 @@ int modbus_tcp_status(small_modbus_t *smb)
 	
 	if( (port_socket) && (port_socket->socket_fd >= 0) )
 	{
+		slen = sizeof(socket_status);
 		getsockopt(port_socket->socket_fd, SOL_SOCKET, SO_ERROR, (void *)&socket_status , &slen );
 	}
 	return socket_status;
