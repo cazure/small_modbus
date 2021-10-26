@@ -1,14 +1,14 @@
 # small modbus
 
-
-
-基于了libmodbus重构，可以实现主机和从机大部分功能，可以多实例
+一个支持主机从机，modbus rtu，modbus tcp的多实例modbus库。
 
 将modbus功能和操作系统数据端口分离，分为：
 
 modbus核心（rtu、tcp），
 
-modbus端口（rtthread device、rtthread sal socket、linux devfs 、linux socket、win32 device 、win32socket）
+modbus端口（rtthread device、rtthread sal socket、linux devfs 、linux socket、win32 device 、win32socket）基于libmodbus的前后端思想，可以实现在rtthread，win32，linux多个平台运行。
+
+[modbus数据协议]: modbus.md
 
 
 
@@ -49,18 +49,8 @@ git clone 下载源码，将 src目录的中所有.c文件和 inc目录添加到
 #include "small_modbus_port_win32.h"
 #endif
 
-#define SMALL_MODBUS_CRC_BYTE_SWAP 0
-
 #endif /* __SMALL_MODBUS_PORT_H__ */
 ```
-
-
-
-
-
-
-
-
 
 
 
