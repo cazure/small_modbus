@@ -171,3 +171,11 @@ int test_modbus_tcp_master(void)
 	return 0;
 }
 
+//msh√¸¡Ó––∆Ù∂Ø
+#if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
+#include <finsh.h>
+
+MSH_CMD_EXPORT(test_modbus_tcp_master, test modbus_tcp_master);
+
+#endif
+

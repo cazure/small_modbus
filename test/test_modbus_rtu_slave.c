@@ -66,44 +66,27 @@ static int test_modbus_rtu_slave_callback(small_modbus_t *smb,int function_code,
 	return rc;
 }
 
-static small_modbus_t modbus_slave = {0}; 
+static small_modbus_t modbus_rtu_slave = {0}; 
 //#define MODBUS_PRINTF(...) 
-#define MODBUS_PRINTF(...)   modbus_debug((&modbus_slave),__VA_ARGS__)
+#define MODBUS_PRINTF(...)   modbus_debug((&modbus_rtu_slave),__VA_ARGS__)
 
-#define UART_DEVICE_NAME "uart3"
+//rtthread device name
+#define UART_DEVICE_NAME "uart1"
 
-#include "drv_gpio.h"
-#define RS485_RTS_PIN			GET_PIN(1, 24)
-#define RS485_STA_PIN			GET_PIN(1, 20)
+//rtthread pin index
+static  int rs485_rts_pin = 0;
 
-static void uart_us_delay(rt_uint32_t us)
-{
-	int temp;
-	while(us--)
-	{
-		temp = 300;
-		while(temp--);
-	}
-}
-
+//收发控制引脚回调函数
 static int uart_rts(int on)
 {
-//	board_uart_dir(2,on);//rts设置
-//	board_led_set(1,on);//led 状态
-	if(on)
+    if(on)
 	{
-		rt_pin_write(RS485_RTS_PIN, PIN_HIGH);
-		
-		rt_pin_write(RS485_STA_PIN, PIN_LOW);
-		
-		uart_us_delay(1000);
+	    rt_pin_write(rs485_rts_pin, PIN_HIGH);
+	    rt_thread_mdelay(2);  //9600 bps 3.5 个字符延迟时间
 	}else
 	{
-		uart_us_delay(3000);
-		
-		rt_pin_write(RS485_RTS_PIN, PIN_LOW);
-		
-		rt_pin_write(RS485_STA_PIN, PIN_HIGH);
+        rt_thread_mdelay(2);  //9600 bps 3.5 个字符延迟时间
+	    rt_pin_write(rs485_rts_pin, PIN_LOW);
 	}
 	return 0;
 }
@@ -114,10 +97,9 @@ static void test_modbus_rtu_slave_thread(void *param)
 	int count = 0;
 	small_modbus_t *smb_slave = param;
 	
-	rt_pin_mode(RS485_RTS_PIN, PIN_MODE_OUTPUT);
-	rt_pin_mode(RS485_STA_PIN, PIN_MODE_OUTPUT);
-	
-	rt_pin_write(RS485_RTS_PIN, PIN_LOW);
+	rs485_rts_pin = rt_pin_get("PB.0");  //根据mcu平台修改引脚号
+	rt_pin_mode(rs485_rts_pin, PIN_MODE_OUTPUT);
+	rt_pin_write(rs485_rts_pin, PIN_LOW);
 	
 	modbus_init(smb_slave,MODBUS_CORE_RTU,modbus_port_rtdevice_create(UART_DEVICE_NAME)); // init modbus  RTU mode
 	
@@ -129,7 +111,7 @@ static void test_modbus_rtu_slave_thread(void *param)
 	serial_config.parity = PARITY_NONE;
 	modbus_rtu_set_serial_config(smb_slave,&serial_config);  //config serial 
 	
-	modbus_rtu_set_serial_rts(smb_slave,uart_rts);
+	modbus_rtu_set_serial_rts(smb_slave,uart_rts);  //set serial rts callback
 	
 	modbus_rtu_set_oflag(smb_slave,RT_DEVICE_FLAG_INT_RX);
 	//modbus_rtu_set_oflag(smb_slave,RT_DEVICE_FLAG_DMA_RX);
@@ -150,16 +132,24 @@ static void test_modbus_rtu_slave_thread(void *param)
 			modbus_error_recovery(smb_slave);
 		}
 	}
-	//modbus_disconnect(&modbus_slave);
+	//modbus_disconnect(smb_slave);  
+	//如果while中没有break应该不会运行到这里
 }
 
 int test_modbus_rtu_slave(void)
 {
 	rt_thread_t tid;
 	
-	tid = rt_thread_create("slave",test_modbus_rtu_slave_thread, &modbus_slave,2048,10, 10);
+	tid = rt_thread_create("slave",test_modbus_rtu_slave_thread, &modbus_rtu_slave,2048,10, 10);
 	if (tid != RT_NULL)
 			rt_thread_startup(tid);
 	return 0;
 }
 
+//msh命令行启动
+#if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
+#include <finsh.h>
+
+MSH_CMD_EXPORT(test_modbus_rtu_slave, test modbus_rtu_slave);
+
+#endif

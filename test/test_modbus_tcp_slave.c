@@ -1,6 +1,7 @@
 #include "stdio.h"
 #include "string.h"
 #include "board.h"
+#include <rtthread.h>
 #include "small_modbus.h"
 #include "board_virtualIO.h"
 
@@ -14,7 +15,7 @@ static int test_modbus_tcp_slave_callback(small_modbus_t *smb,int function_code,
 		{
 			if((0 <= addr)&&(addr < 10000))	//地址映射，地址从0开始
 			{
-				rc = vio_read_hold_coils(addr,num,read_write_data);
+				rc = vio_read_hold_coils(addr,num,read_write_data);  //vio操作
 			}
 		}break;
 		case MODBUS_FC_READ_INPUTS_COILS:	//读取只读线圈,1bit代表一个线圈
@@ -22,7 +23,7 @@ static int test_modbus_tcp_slave_callback(small_modbus_t *smb,int function_code,
 			if((10000 <= addr)&&(addr < 20000)) //地址映射，地址从10000开始
 			{
 				addr = addr - 10000;
-				rc = vio_read_input_coils(addr,num,read_write_data); 
+				rc = vio_read_input_coils(addr,num,read_write_data);   //vio操作
 			}
 		}break;
 		case MODBUS_FC_READ_HOLDING_REGISTERS:	//读取保持寄存器,16bit代表一个寄存器
@@ -30,7 +31,7 @@ static int test_modbus_tcp_slave_callback(small_modbus_t *smb,int function_code,
 			if((40000 <= addr)&&(addr < 50000)) //地址映射，地址从40000开始
 			{
 				addr = addr - 40000;
-				rc = vio_read_hold_regs(addr,num,read_write_data); 
+				rc = vio_read_hold_regs(addr,num,read_write_data);   //vio操作
 			}
 		}break;
 		case MODBUS_FC_READ_INPUT_REGISTERS:	//读取输入寄存器,16bit代表一个寄存器
@@ -38,7 +39,7 @@ static int test_modbus_tcp_slave_callback(small_modbus_t *smb,int function_code,
 			if((30000 <= addr)&&(addr < 40000)) //地址映射，地址从30000开始
 			{
 				addr = addr - 30000;
-				rc = vio_read_input_regs(addr,num,read_write_data); 
+				rc = vio_read_input_regs(addr,num,read_write_data);   //vio操作
 			}
 		}break;
 		case MODBUS_FC_WRITE_SINGLE_COIL:	//写单个线圈,1bit代表一个线圈
@@ -46,7 +47,7 @@ static int test_modbus_tcp_slave_callback(small_modbus_t *smb,int function_code,
 		{
 			if((0 <= addr)&&(addr < 10000))	//地址映射，地址从0开始
 			{
-				rc = vio_write_hold_coils(addr,num,read_write_data); 
+				rc = vio_write_hold_coils(addr,num,read_write_data);   //vio操作
 			}
 		}break;
 		case MODBUS_FC_WRITE_SINGLE_REGISTER:	//写单个寄存器,16bit代表一个寄存器
@@ -55,7 +56,7 @@ static int test_modbus_tcp_slave_callback(small_modbus_t *smb,int function_code,
 			if((40000 <= addr)&&(addr < 50000))	//地址映射，地址从40000开始
 			{
 				addr = addr - 40000;
-				rc = vio_write_hold_regs(addr,num,read_write_data); 
+				rc = vio_write_hold_regs(addr,num,read_write_data);   //vio操作
 			}
 		}break;
 	}	
@@ -71,59 +72,67 @@ static small_modbus_t modbus_tcp_slave = {0};
 //#define MODBUS_PRINTF(...)   modbus_debug((&modbus_tcp_slave),__VA_ARGS__)
 #define MODBUS_PRINTF(...)   modbus_debug_info((&modbus_tcp_slave),__VA_ARGS__)
 
-//static void test_modbus_tcp_slave_thread(void *param)
-//{
-//	int rc = 0;
-//	int count = 0;
-//	small_modbus_t *smb_slave = param;
-//	
-//	modbus_init(smb_slave,MODBUS_CORE_TCP,
-//			modbus_port_rtsocket_create(MODBUS_DEVICE_SLAVE,"0.0.0.0", "502")); // init modbus  TCP mode
-//	
-//	modbus_set_slave(smb_slave,1); //set slave addr
-//	
-//	rt_kprintf("modbus slave addr:%d\n",1);
-//	
-//	int server_socket = -1;
-//	int client_socket = -1;
-//	while(1)
-//	{
-//		server_socket = modbus_tcp_listen(smb_slave,1); // 
-//		MODBUS_PRINTF("modbus_tcp_listen:%d\n",server_socket);
-//		while(1)
-//		{
-//			client_socket = modbus_tcp_accept(smb_slave,server_socket);
-//			MODBUS_PRINTF("modbus_tcp_accept:%d\n",client_socket);
-//			
-//			modbus_tcp_set_socket(smb_slave,client_socket); //set client_socket
-//			while(modbus_tcp_status(smb_slave) == MODBUS_OK)
-//			{
-//				rc = modbus_slave_wait_handle(smb_slave,test_modbus_tcp_slave_callback,MODBUS_WAIT_FOREVER);
-//				if (rc > 0)
-//				{
-//					count++;
-//				}else
-//				{
-//					if(rc == MODBUS_ERROR_READ)
-//					{
-//						break; //disconnect
-//					}
-//					modbus_error_recovery(smb_slave);
-//				}
-//			}
-//			MODBUS_PRINTF("modbus_disconnect client :%d\n",client_socket);
-//			modbus_tcp_set_socket(smb_slave,client_socket); //set client_socket
-//			modbus_tcp_disconnect(smb_slave); //disconnect client_socket
-//			client_socket = -1;
-//		}
-//		
-//		MODBUS_PRINTF("modbus_disconnect server :%d\n",server_socket);
-//		modbus_tcp_set_socket(smb_slave,server_socket); //set server_socket
-//		modbus_tcp_disconnect(smb_slave); //disconnect server_socket
-//		server_socket = -1;
-//	}
-//}
 
+//是否使用多路socket,多路socket需要posix select支持
+#define MODBUS_TCP_SLAVE_MULTIPLEWAY_SOCKET
+
+
+#ifndef MODBUS_TCP_SLAVE_MULTIPLEWAY_SOCKET
+
+static void test_modbus_tcp_slave_thread(void *param)
+{
+	int rc = 0;
+	int count = 0;
+	small_modbus_t *smb_slave = param;
+	
+	modbus_init(smb_slave,MODBUS_CORE_TCP,
+			modbus_port_rtsocket_create(MODBUS_DEVICE_SLAVE,"0.0.0.0", "502")); // init modbus  TCP mode
+	
+	modbus_set_slave(smb_slave,1); //set slave addr
+	
+	rt_kprintf("modbus slave addr:%d\n",1);
+	
+	int server_socket = -1;
+	int client_socket = -1;
+	while(1)
+	{
+		server_socket = modbus_tcp_listen(smb_slave,1); // 
+		MODBUS_PRINTF("modbus_tcp_listen:%d\n",server_socket);
+		while(1)
+		{
+			client_socket = modbus_tcp_accept(smb_slave,server_socket);
+			MODBUS_PRINTF("modbus_tcp_accept:%d\n",client_socket);
+			
+			modbus_tcp_set_socket(smb_slave,client_socket); //set client_socket
+			while(modbus_tcp_status(smb_slave) == MODBUS_OK)
+			{
+				rc = modbus_slave_wait_handle(smb_slave,test_modbus_tcp_slave_callback,MODBUS_WAIT_FOREVER);
+				if (rc > 0)
+				{
+					count++;
+				}else
+				{
+					if(rc == MODBUS_ERROR_READ)
+					{
+						break; //disconnect
+					}
+					modbus_error_recovery(smb_slave);
+				}
+			}
+			MODBUS_PRINTF("modbus_disconnect client :%d\n",client_socket);
+			modbus_tcp_set_socket(smb_slave,client_socket); //set client_socket
+			modbus_tcp_disconnect(smb_slave); //disconnect client_socket
+			client_socket = -1;
+		}
+		
+		MODBUS_PRINTF("modbus_disconnect server :%d\n",server_socket);
+		modbus_tcp_set_socket(smb_slave,server_socket); //set server_socket
+		modbus_tcp_disconnect(smb_slave); //disconnect server_socket
+		server_socket = -1;
+	}
+}
+
+#elseif
 
 #ifdef RT_USING_POSIX
 
@@ -134,6 +143,7 @@ static small_modbus_t modbus_tcp_slave = {0};
 #include <sys/time.h>
 #include <sal_socket.h>
 
+//最大连接数量
 #define MAX_CLIENT_NUM 3
 
 static void test_modbus_tcp_slave_thread(void *param)
@@ -272,6 +282,8 @@ static void test_modbus_tcp_slave_thread(void *param)
 
 #endif
 
+#endif
+
 int test_modbus_tcp_slave(void)
 {
 	rt_thread_t tid;
@@ -282,4 +294,11 @@ int test_modbus_tcp_slave(void)
 	return 0;
 }
 
+//msh命令行启动
+#if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
+#include <finsh.h>
+
+MSH_CMD_EXPORT(test_modbus_tcp_slave, test modbus_tcp_slave);
+
+#endif
 
