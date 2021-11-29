@@ -12,11 +12,23 @@ modbus端口（rtthread device、rtthread sal socket、linux devfs 、linux sock
 
 
 
-### 使用:
+## 开始上手:
 
-git clone 下载源码，将 src目录的中所有.c文件和 inc目录添加到项目中，然后将test目录的 small_modbus_port.h和test_modbus_rtu_matser.c或者test_modbus_rtu_slave.c添加到项目中，并修改到适当的配置
+**git clone 下载源码，将 src目录的中所有.c文件和 inc目录添加到项目中**
 
-修改small_modbus_port.h完成不同平台的适配
+然后将test目录的 
+
+**config_small_modbus.h**    //配置文件，用来使能small modbus功能
+
+**test_modbus_rtu_matser.c**    //modbus rtu 主机模式示例代码
+
+**test_modbus_rtu_slave.c**  //modbus rtu 从机模块示例代码
+
+添加到项目中，并修改到适当的配置
+
+
+
+修改config_small_modbus.h完成不同平台的适配
 
 ```c
 #ifndef __SMALL_MODBUS_PORT_H__
@@ -51,6 +63,14 @@ git clone 下载源码，将 src目录的中所有.c文件和 inc目录添加到
 
 #endif /* __SMALL_MODBUS_PORT_H__ */
 ```
+
+
+
+
+
+
+
+
 
 
 
@@ -152,6 +172,14 @@ small_modbus_t *modbus_create(uint8_t core_type,void *port);
 
 
 
+
+
+
+## 相关工具 ： 
+
+Modbus Poll  
+
+Modbus Slave
 
 
 
