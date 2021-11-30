@@ -4,11 +4,39 @@
 #include "small_modbus.h"
 #include "board_virtualIO.h"
 
+static small_modbus_t modbus_rtu_master = {0};
+//#define MODBUS_PRINTF(...) 
+#define MODBUS_PRINTF(...)   modbus_debug_info((&modbus_rtu_master),__VA_ARGS__)
+
+//rtthread device name
+#define UART_DEVICE_NAME "uart2"
+
+//rtthread pin index
+static  int rs485_rts_pin = 0;
+
+//收发控制引脚回调函数
+static int uart_rts(int on)
+{
+	if(on)
+	{
+	    rt_pin_write(rs485_rts_pin, PIN_HIGH);
+	    rt_thread_mdelay(2);  //9600 bps 3.5 个字符延迟时间
+	}else
+	{
+		rt_thread_mdelay(2);  //9600 bps 3.5 个字符延迟时间
+	    rt_pin_write(rs485_rts_pin, PIN_LOW);
+	}
+	return 0;
+}
+
+
 static int count_ok = 0;
 static int count_err = 0;
-static int index = 0;
 
 #define MASTER_SEM_POLL
+
+
+#ifdef MASTER_SEM_POLL
 
 //send modbus 的信号量
 struct rt_semaphore send_modbus_sem;
@@ -19,9 +47,26 @@ RT_WEAK void vio_lowlevel_update(void)
 	rt_sem_release(&(send_modbus_sem));
 }
 
+//msh命令行调用函数
+void test_modbus_rtu_master_sem(void)
+{
+	vio_lowlevel_update();
+}
+//msh命令行启动
+#if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
+#include <finsh.h>
+
+MSH_CMD_EXPORT(test_modbus_rtu_master_sem, test_modbus_rtu_master sem);
+
+#endif
+
+#endif
+
+static uint8_t temp_buff[256];
 
 void master_sem_poll(small_modbus_t *smb_master)
 {
+	int index = 0;
 	int rc = rt_sem_take(&(send_modbus_sem),3000); //等待vio_lowlevel_update释放信号量,如果没有会一直等待3000ms
 	if(rc == RT_EOK)  //释放成功
 	{
@@ -43,7 +88,7 @@ void master_sem_poll(small_modbus_t *smb_master)
 		modbus_error_recovery(smb_master);
 		modbus_set_slave(smb_master, 1);
 		rc = modbus_read_input_bits(smb_master, 10000, 8, temp_buff); // modbus_read_input_bits
-		rt_kprintf("modbus_read_input_bits:%d\n",rc);
+		MODBUS_PRINTF("modbus_read_input_bits:%d\n",rc);
 		if(rc >= MODBUS_OK)
 		{
 			vio_lowlevel_update_input_coils(0,8,temp_buff); //更新输入寄存器的值到vio
@@ -65,11 +110,13 @@ void master_sem_poll(small_modbus_t *smb_master)
 
 void master_poll(small_modbus_t *smb_master)
 {
+	int rc = 0;
+	int index = 0;
 	rt_thread_mdelay(30);
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
-	int rc = modbus_read_input_bits(smb_master, 10000, 8, temp_buff); // modbus_read_input_bits
-	rt_kprintf("modbus_read_input_bits:%d\n",rc);
+	rc = modbus_read_input_bits(smb_master, 10000, 8, temp_buff); // modbus_read_input_bits
+	MODBUS_PRINTF("modbus_read_input_bits:%d\n",rc);
 	if(rc >= MODBUS_OK)
 	{
 		for(index = 0; index <8;index++)
@@ -87,7 +134,7 @@ void master_poll(small_modbus_t *smb_master)
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
 	rc = modbus_write_bits(smb_master, 00000 , 8, temp_buff); // modbus_write_bits
-	rt_kprintf("modbus_write_bits:%d\n",rc);
+	MODBUS_PRINTF("modbus_write_bits:%d\n",rc);
 	if(rc >= MODBUS_OK)
 	{
 		count_ok++;
@@ -100,7 +147,7 @@ void master_poll(small_modbus_t *smb_master)
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
 	rc = modbus_read_bits(smb_master, 00000 , 8, temp_buff); // modbus_read_bits
-	rt_kprintf("modbus_read_bits:%d\n",rc);
+	MODBUS_PRINTF("modbus_read_bits:%d\n",rc);
 	if(rc >= MODBUS_OK)
 	{
 		for(index = 0; index <8;index++)
@@ -119,7 +166,7 @@ void master_poll(small_modbus_t *smb_master)
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
 	rc = modbus_read_input_registers(smb_master, 30000 , 8, (uint16_t*)temp_buff);  // modbus_read_input_registers
-	rt_kprintf("modbus_read_input_registers:%d\n",rc);
+	MODBUS_PRINTF("modbus_read_input_registers:%d\n",rc);
 	if(rc >= MODBUS_OK)
 	{
 		for(index = 0; index <8;index++)
@@ -137,7 +184,7 @@ void master_poll(small_modbus_t *smb_master)
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
 	rc = modbus_write_registers(smb_master, 40000 , 8, (uint16_t*)temp_buff); // modbus_write_registers
-	rt_kprintf("modbus_write_registers:%d\n",rc);
+	MODBUS_PRINTF("modbus_write_registers:%d\n",rc);
 	if(rc >= MODBUS_OK)
 	{
 		count_ok++;
@@ -150,7 +197,7 @@ void master_poll(small_modbus_t *smb_master)
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
 	rc = modbus_read_registers(smb_master, 40000 , 8, (uint16_t*)temp_buff); // modbus_read_registers
-	rt_kprintf("modbus_read_registers:%d\n",rc);
+	MODBUS_PRINTF("modbus_read_registers:%d\n",rc);
 	if(rc >= MODBUS_OK)
 	{
 		for(index = 0; index <8;index++)
@@ -164,34 +211,6 @@ void master_poll(small_modbus_t *smb_master)
 		count_err++;
 	}
 }
-
-
-static small_modbus_t modbus_rtu_master = {0};
-//#define MODBUS_PRINTF(...) 
-#define MODBUS_PRINTF(...)   modbus_debug_info((&modbus_rtu_master),__VA_ARGS__)
-
-//rtthread device name
-#define UART_DEVICE_NAME "uart2"
-
-//rtthread pin index
-static  int rs485_rts_pin = 0;
-
-//收发控制引脚回调函数
-static int uart_rts(int on)
-{
-	if(on)
-	{
-	    rt_pin_write(rs485_rts_pin, PIN_HIGH);
-	    rt_thread_mdelay(2);  //9600 bps 3.5 个字符延迟时间
-	}else
-	{
-			rt_thread_mdelay(2);  //9600 bps 3.5 个字符延迟时间
-	    rt_pin_write(rs485_rts_pin, PIN_LOW);
-	}
-	return 0;
-}
-
-static uint8_t temp_buff[256];
 
 static void test_modbus_rtu_master_thread(void *param)
 {
@@ -224,11 +243,11 @@ static void test_modbus_rtu_master_thread(void *param)
 	
 	while(1)
 	{
-		#ifdef MASTER_SEM_POLL
+#ifdef MASTER_SEM_POLL
 		master_sem_poll(smb_master);  //主机信号量触发读写
-		#else
+#else
 		master_poll(smb_master);  //主机轮询从机示例代码，该操作比较费时
-		#endif
+#endif
 	}
 	//modbus_disconnect(smb_master);
 	//如果while中没有break应该不会运行到这里
