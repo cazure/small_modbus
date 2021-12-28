@@ -5,12 +5,12 @@
  */
 
 #include "small_modbus_port_linux.h"
- /*
+/*
  * modbus on linux
  */
 #if SMALL_MODBUS_LINUX
 
-int _modbus_debug(small_modbus_t* smb, int level, const char* fmt, ...)
+int _modbus_debug(small_modbus_t *smb, int level, const char *fmt, ...)
 {
     static char log_buf[256];
     if (level <= smb->debug_level)
@@ -24,7 +24,4 @@ int _modbus_debug(small_modbus_t* smb, int level, const char* fmt, ...)
     return 0;
 }
 
-
-
 #endif
-

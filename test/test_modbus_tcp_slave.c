@@ -5,77 +5,81 @@
 #include "small_modbus.h"
 #include "board_virtualIO.h"
 
-//´Ó»ú»Øµ÷º¯Êı,µ±´Ó»ú½ÓÊÕµ½Ö÷»úµÄÇëÇó(Êı¾İĞ£ÑéºÍµØÖ·¹¦ÄÜÂëÒÑ¾­½âÎöÍê),ÔÚÕâ¸ö»Øµ÷º¯ÊıÄÚÌî³äÊı¾İ£¬·µ»ØÊı¾İµÄ³¤¶È¼´¿É
-static int test_modbus_tcp_slave_callback(small_modbus_t *smb,int function_code,int addr,int num,void *read_write_data)
+//ä»æœºå›è°ƒå‡½æ•°,å½“ä»æœºæ¥æ”¶åˆ°ä¸»æœºçš„è¯·æ±‚(æ•°æ®æ ¡éªŒå’Œåœ°å€åŠŸèƒ½ç å·²ç»è§£æå®Œ),åœ¨è¿™ä¸ªå›è°ƒå‡½æ•°å†…å¡«å……æ•°æ®ï¼Œè¿”å›æ•°æ®çš„é•¿åº¦å³å¯
+static int test_modbus_tcp_slave_callback(small_modbus_t *smb, int function_code, int addr, int num, void *read_write_data)
 {
 	int rc = 0;
-	switch(function_code)
+	switch (function_code)
 	{
-		case MODBUS_FC_READ_HOLDING_COILS:	//¶ÁÈ¡±£³ÖÏßÈ¦,1bit´ú±íÒ»¸öÏßÈ¦
-		{
-			if((0 <= addr)&&(addr < 10000))	//µØÖ·Ó³Éä£¬µØÖ·´Ó0¿ªÊ¼
-			{
-				rc = vio_read_hold_coils(addr,num,read_write_data);  //vio²Ù×÷
-			}
-		}break;
-		case MODBUS_FC_READ_INPUTS_COILS:	//¶ÁÈ¡Ö»¶ÁÏßÈ¦,1bit´ú±íÒ»¸öÏßÈ¦
-		{
-			if((10000 <= addr)&&(addr < 20000)) //µØÖ·Ó³Éä£¬µØÖ·´Ó10000¿ªÊ¼
-			{
-				addr = addr - 10000;
-				rc = vio_read_input_coils(addr,num,read_write_data);   //vio²Ù×÷
-			}
-		}break;
-		case MODBUS_FC_READ_HOLDING_REGISTERS:	//¶ÁÈ¡±£³Ö¼Ä´æÆ÷,16bit´ú±íÒ»¸ö¼Ä´æÆ÷
-		{
-			if((40000 <= addr)&&(addr < 50000)) //µØÖ·Ó³Éä£¬µØÖ·´Ó40000¿ªÊ¼
-			{
-				addr = addr - 40000;
-				rc = vio_read_hold_regs(addr,num,read_write_data);   //vio²Ù×÷
-			}
-		}break;
-		case MODBUS_FC_READ_INPUT_REGISTERS:	//¶ÁÈ¡ÊäÈë¼Ä´æÆ÷,16bit´ú±íÒ»¸ö¼Ä´æÆ÷
-		{
-			if((30000 <= addr)&&(addr < 40000)) //µØÖ·Ó³Éä£¬µØÖ·´Ó30000¿ªÊ¼
-			{
-				addr = addr - 30000;
-				rc = vio_read_input_regs(addr,num,read_write_data);   //vio²Ù×÷
-			}
-		}break;
-		case MODBUS_FC_WRITE_SINGLE_COIL:	//Ğ´µ¥¸öÏßÈ¦,1bit´ú±íÒ»¸öÏßÈ¦
-		case MODBUS_FC_WRITE_MULTIPLE_COILS:		//Ğ´ÏßÈ¦,1bit´ú±íÒ»¸öÏßÈ¦
-		{
-			if((0 <= addr)&&(addr < 10000))	//µØÖ·Ó³Éä£¬µØÖ·´Ó0¿ªÊ¼
-			{
-				rc = vio_write_hold_coils(addr,num,read_write_data);   //vio²Ù×÷
-			}
-		}break;
-		case MODBUS_FC_WRITE_SINGLE_REGISTER:	//Ğ´µ¥¸ö¼Ä´æÆ÷,16bit´ú±íÒ»¸ö¼Ä´æÆ÷
-		case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:	//Ğ´¼Ä´æÆ÷,16bit´ú±íÒ»¸ö¼Ä´æÆ÷
-		{	
-			if((40000 <= addr)&&(addr < 50000))	//µØÖ·Ó³Éä£¬µØÖ·´Ó40000¿ªÊ¼
-			{
-				addr = addr - 40000;
-				rc = vio_write_hold_regs(addr,num,read_write_data);   //vio²Ù×÷
-			}
-		}break;
-	}	
-	if(rc<0)
+	case MODBUS_FC_READ_HOLDING_COILS: //è¯»å–ä¿æŒçº¿åœˆ,1bitä»£è¡¨ä¸€ä¸ªçº¿åœˆ
 	{
-		//MODBUS_PRINTF("callback fail %d\n",rc);
+		if ((0 <= addr) && (addr < 10000)) //åœ°å€æ˜ å°„ï¼Œåœ°å€ä»0å¼€å§‹
+		{
+			rc = vio_read_hold_coils(addr, num, read_write_data); // vioæ“ä½œ
+		}
+	}
+	break;
+	case MODBUS_FC_READ_INPUTS_COILS: //è¯»å–åªè¯»çº¿åœˆ,1bitä»£è¡¨ä¸€ä¸ªçº¿åœˆ
+	{
+		if ((10000 <= addr) && (addr < 20000)) //åœ°å€æ˜ å°„ï¼Œåœ°å€ä»10000å¼€å§‹
+		{
+			addr = addr - 10000;
+			rc = vio_read_input_coils(addr, num, read_write_data); // vioæ“ä½œ
+		}
+	}
+	break;
+	case MODBUS_FC_READ_HOLDING_REGISTERS: //è¯»å–ä¿æŒå¯„å­˜å™¨,16bitä»£è¡¨ä¸€ä¸ªå¯„å­˜å™¨
+	{
+		if ((40000 <= addr) && (addr < 50000)) //åœ°å€æ˜ å°„ï¼Œåœ°å€ä»40000å¼€å§‹
+		{
+			addr = addr - 40000;
+			rc = vio_read_hold_regs(addr, num, read_write_data); // vioæ“ä½œ
+		}
+	}
+	break;
+	case MODBUS_FC_READ_INPUT_REGISTERS: //è¯»å–è¾“å…¥å¯„å­˜å™¨,16bitä»£è¡¨ä¸€ä¸ªå¯„å­˜å™¨
+	{
+		if ((30000 <= addr) && (addr < 40000)) //åœ°å€æ˜ å°„ï¼Œåœ°å€ä»30000å¼€å§‹
+		{
+			addr = addr - 30000;
+			rc = vio_read_input_regs(addr, num, read_write_data); // vioæ“ä½œ
+		}
+	}
+	break;
+	case MODBUS_FC_WRITE_SINGLE_COIL:		 //å†™å•ä¸ªçº¿åœˆ,1bitä»£è¡¨ä¸€ä¸ªçº¿åœˆ
+	case MODBUS_FC_WRITE_MULTIPLE_COILS: //å†™çº¿åœˆ,1bitä»£è¡¨ä¸€ä¸ªçº¿åœˆ
+	{
+		if ((0 <= addr) && (addr < 10000)) //åœ°å€æ˜ å°„ï¼Œåœ°å€ä»0å¼€å§‹
+		{
+			rc = vio_write_hold_coils(addr, num, read_write_data); // vioæ“ä½œ
+		}
+	}
+	break;
+	case MODBUS_FC_WRITE_SINGLE_REGISTER:		 //å†™å•ä¸ªå¯„å­˜å™¨,16bitä»£è¡¨ä¸€ä¸ªå¯„å­˜å™¨
+	case MODBUS_FC_WRITE_MULTIPLE_REGISTERS: //å†™å¯„å­˜å™¨,16bitä»£è¡¨ä¸€ä¸ªå¯„å­˜å™¨
+	{
+		if ((40000 <= addr) && (addr < 50000)) //åœ°å€æ˜ å°„ï¼Œåœ°å€ä»40000å¼€å§‹
+		{
+			addr = addr - 40000;
+			rc = vio_write_hold_regs(addr, num, read_write_data); // vioæ“ä½œ
+		}
+	}
+	break;
+	}
+	if (rc < 0)
+	{
+		// MODBUS_PRINTF("callback fail %d\n",rc);
 	}
 	return rc;
 }
 
-static small_modbus_t modbus_tcp_slave = {0}; 
-//#define MODBUS_PRINTF(...) 
+static small_modbus_t modbus_tcp_slave = {0};
+//#define MODBUS_PRINTF(...)
 //#define MODBUS_PRINTF(...)   modbus_debug((&modbus_tcp_slave),__VA_ARGS__)
-#define MODBUS_PRINTF(...)   modbus_debug_info((&modbus_tcp_slave),__VA_ARGS__)
+#define MODBUS_PRINTF(...) modbus_debug_info((&modbus_tcp_slave), __VA_ARGS__)
 
-
-//ÊÇ·ñÊ¹ÓÃ¶àÂ·socket,¶àÂ·socketĞèÒªposix selectÖ§³Ö
+//æ˜¯å¦ä½¿ç”¨å¤šè·¯socket,å¤šè·¯socketéœ€è¦posix selectæ”¯æŒ
 #define MODBUS_TCP_SLAVE_MULTIPLEWAY_SOCKET
-
 
 #ifndef MODBUS_TCP_SLAVE_MULTIPLEWAY_SOCKET
 
@@ -84,50 +88,51 @@ static void test_modbus_tcp_slave_thread(void *param)
 	int rc = 0;
 	int count = 0;
 	small_modbus_t *smb_slave = param;
-	
-	modbus_init(smb_slave,MODBUS_CORE_TCP,
-			modbus_port_rtsocket_create(MODBUS_DEVICE_SLAVE,"0.0.0.0", "502")); // init modbus  TCP mode
-	
-	modbus_set_slave(smb_slave,1); //set slave addr
-	
-	rt_kprintf("modbus slave addr:%d\n",1);
-	
+
+	modbus_init(smb_slave, MODBUS_CORE_TCP,
+							modbus_port_rtsocket_create(MODBUS_DEVICE_SLAVE, "0.0.0.0", "502")); // init modbus  TCP mode
+
+	modbus_set_slave(smb_slave, 1); // set slave addr
+
+	rt_kprintf("modbus slave addr:%d\n", 1);
+
 	int server_socket = -1;
 	int client_socket = -1;
-	while(1)
+	while (1)
 	{
-		server_socket = modbus_tcp_listen(smb_slave,1); // 
-		MODBUS_PRINTF("modbus_tcp_listen:%d\n",server_socket);
-		while(1)
+		server_socket = modbus_tcp_listen(smb_slave, 1); //
+		MODBUS_PRINTF("modbus_tcp_listen:%d\n", server_socket);
+		while (1)
 		{
-			client_socket = modbus_tcp_accept(smb_slave,server_socket);
-			MODBUS_PRINTF("modbus_tcp_accept:%d\n",client_socket);
-			
-			modbus_tcp_set_socket(smb_slave,client_socket); //set client_socket
-			while(modbus_tcp_status(smb_slave) == MODBUS_OK)
+			client_socket = modbus_tcp_accept(smb_slave, server_socket);
+			MODBUS_PRINTF("modbus_tcp_accept:%d\n", client_socket);
+
+			modbus_tcp_set_socket(smb_slave, client_socket); // set client_socket
+			while (modbus_tcp_status(smb_slave) == MODBUS_OK)
 			{
-				rc = modbus_slave_wait_handle(smb_slave,test_modbus_tcp_slave_callback,MODBUS_WAIT_FOREVER);
+				rc = modbus_slave_wait_handle(smb_slave, test_modbus_tcp_slave_callback, MODBUS_WAIT_FOREVER);
 				if (rc > 0)
 				{
 					count++;
-				}else
+				}
+				else
 				{
-					if(rc == MODBUS_ERROR_READ)
+					if (rc == MODBUS_ERROR_READ)
 					{
-						break; //disconnect
+						break; // disconnect
 					}
 					modbus_error_recovery(smb_slave);
 				}
 			}
-			MODBUS_PRINTF("modbus_disconnect client :%d\n",client_socket);
-			modbus_tcp_set_socket(smb_slave,client_socket); //set client_socket
-			modbus_tcp_disconnect(smb_slave); //disconnect client_socket
+			MODBUS_PRINTF("modbus_disconnect client :%d\n", client_socket);
+			modbus_tcp_set_socket(smb_slave, client_socket); // set client_socket
+			modbus_tcp_disconnect(smb_slave);								 // disconnect client_socket
 			client_socket = -1;
 		}
-		
-		MODBUS_PRINTF("modbus_disconnect server :%d\n",server_socket);
-		modbus_tcp_set_socket(smb_slave,server_socket); //set server_socket
-		modbus_tcp_disconnect(smb_slave); //disconnect server_socket
+
+		MODBUS_PRINTF("modbus_disconnect server :%d\n", server_socket);
+		modbus_tcp_set_socket(smb_slave, server_socket); // set server_socket
+		modbus_tcp_disconnect(smb_slave);								 // disconnect server_socket
 		server_socket = -1;
 	}
 }
@@ -143,7 +148,7 @@ static void test_modbus_tcp_slave_thread(void *param)
 #include <sys/time.h>
 #include <sal_socket.h>
 
-//×î´óÁ¬½ÓÊıÁ¿
+//æœ€å¤§è¿æ¥æ•°é‡
 #define MAX_CLIENT_NUM 3
 
 static void test_modbus_tcp_slave_thread(void *param)
@@ -151,131 +156,131 @@ static void test_modbus_tcp_slave_thread(void *param)
 	int rc = 0;
 	int count = 0;
 	small_modbus_t *smb_slave = param;
-	
-	modbus_init(smb_slave,MODBUS_CORE_TCP,
-			modbus_port_rtsocket_create(MODBUS_DEVICE_SLAVE,"0.0.0.0", "502")); // init modbus  TCP mode
-	
-	modbus_set_slave(smb_slave,1); //set slave addr
-	
-	rt_kprintf("modbus slave addr:%d\n",1);
-	
+
+	modbus_init(smb_slave, MODBUS_CORE_TCP,
+							modbus_port_rtsocket_create(MODBUS_DEVICE_SLAVE, "0.0.0.0", "502")); // init modbus  TCP mode
+
+	modbus_set_slave(smb_slave, 1); // set slave addr
+
+	rt_kprintf("modbus slave addr:%d\n", 1);
+
 	int max_fd = -1;
 	int server_socket = -1;
 	int client_socket[MAX_CLIENT_NUM] = {-1};
-	
+
 	fd_set readset;
 	struct timeval select_timeout;
 	select_timeout.tv_sec = 1;
 	select_timeout.tv_usec = 0;
-	
+
 	for (int i = 0; i < MAX_CLIENT_NUM; i++)
 	{
 		client_socket[i] = -1;
 	}
-	while(1)
+	while (1)
 	{
-		server_socket = modbus_tcp_listen(smb_slave,MAX_CLIENT_NUM); // 
-		MODBUS_PRINTF("modbus_tcp_listen:%d\n",server_socket);
-		while(1)
+		server_socket = modbus_tcp_listen(smb_slave, MAX_CLIENT_NUM); //
+		MODBUS_PRINTF("modbus_tcp_listen:%d\n", server_socket);
+		while (1)
 		{
 			max_fd = -1;
 			FD_ZERO(&readset);
 			FD_SET(server_socket, &readset);
-			
-			if(max_fd < server_socket)
+
+			if (max_fd < server_socket)
 			{
 				max_fd = server_socket;
 			}
-			
+
 			for (int i = 0; i < MAX_CLIENT_NUM; i++)
 			{
-				if(client_socket[i] >= 0)
+				if (client_socket[i] >= 0)
 				{
 					FD_SET(client_socket[i], &readset);
-					if(max_fd < client_socket[i])
+					if (max_fd < client_socket[i])
 						max_fd = client_socket[i];
 				}
 			}
-			
+
 			rc = select(max_fd + 1, &readset, RT_NULL, RT_NULL, &select_timeout);
-			if(rc < 0)
+			if (rc < 0)
 			{
-				MODBUS_PRINTF("modbus_tcp_select:%d\n",rc);
-					// goto _mbtcp_restart;
+				MODBUS_PRINTF("modbus_tcp_select:%d\n", rc);
+				// goto _mbtcp_restart;
 				break;
 			}
-			else if(rc > 0)
+			else if (rc > 0)
 			{
-				if(FD_ISSET(server_socket, &readset))
+				if (FD_ISSET(server_socket, &readset))
 				{
 					int client_sock_fd = modbus_tcp_accept(smb_slave, server_socket);
-					MODBUS_PRINTF("modbus_tcp_accept:%d\n",client_sock_fd);
-					if(client_sock_fd >= 0)
+					MODBUS_PRINTF("modbus_tcp_accept:%d\n", client_sock_fd);
+					if (client_sock_fd >= 0)
 					{
 						int index = -1;
 						for (int i = 0; i < MAX_CLIENT_NUM; i++)
 						{
-							if(client_socket[i] < 0)
+							if (client_socket[i] < 0)
 							{
 								index = i;
 								break;
 							}
 						}
-						if(index >= 0)
+						if (index >= 0)
 						{
 							client_socket[index] = client_sock_fd;
 						}
 						else
 						{
-							MODBUS_PRINTF("modbus client max :%d close:%d\n",MAX_CLIENT_NUM,client_sock_fd);
-							modbus_tcp_set_socket(smb_slave,client_sock_fd); //set server_socket
-							modbus_tcp_disconnect(smb_slave); //disconnect server_socket
+							MODBUS_PRINTF("modbus client max :%d close:%d\n", MAX_CLIENT_NUM, client_sock_fd);
+							modbus_tcp_set_socket(smb_slave, client_sock_fd); // set server_socket
+							modbus_tcp_disconnect(smb_slave);									// disconnect server_socket
 						}
 					}
 				}
 				for (int i = 0; i < MAX_CLIENT_NUM; i++)
 				{
-					if(client_socket[i] >= 0)
+					if (client_socket[i] >= 0)
 					{
-						if(FD_ISSET(client_socket[i] , &readset))
+						if (FD_ISSET(client_socket[i], &readset))
 						{
-							modbus_tcp_set_socket(smb_slave,client_socket[i]);
-							
-							rc = modbus_slave_wait_handle(smb_slave,test_modbus_tcp_slave_callback,MODBUS_WAIT_FOREVER);
+							modbus_tcp_set_socket(smb_slave, client_socket[i]);
+
+							rc = modbus_slave_wait_handle(smb_slave, test_modbus_tcp_slave_callback, MODBUS_WAIT_FOREVER);
 							if (rc > 0)
 							{
 								count++;
-							}else
+							}
+							else
 							{
-								if(rc == MODBUS_ERROR_READ)
+								if (rc == MODBUS_ERROR_READ)
 								{
-									MODBUS_PRINTF("modbus_disconnect client :%d\n",client_socket[i]);
-									modbus_tcp_set_socket(smb_slave,client_socket[i]); //set client_socket
-									modbus_tcp_disconnect(smb_slave); //disconnect client_socket
+									MODBUS_PRINTF("modbus_disconnect client :%d\n", client_socket[i]);
+									modbus_tcp_set_socket(smb_slave, client_socket[i]); // set client_socket
+									modbus_tcp_disconnect(smb_slave);										// disconnect client_socket
 									client_socket[i] = -1;
 								}
 								modbus_error_recovery(smb_slave);
 							}
 						}
 					}
-				}// for
+				} // for
 			}
 		} // while
-		
-		
+
 		for (int i = 0; i < MAX_CLIENT_NUM; i++)
 		{
-			if(client_socket[i] >= 0 )
+			if (client_socket[i] >= 0)
 			{
-				MODBUS_PRINTF("modbus_disconnect client :%d\n",client_socket[i]);
-				modbus_tcp_set_socket(smb_slave,client_socket[i]); //set server_socket
-				modbus_tcp_disconnect(smb_slave); //disconnect server_socket
+				MODBUS_PRINTF("modbus_disconnect client :%d\n", client_socket[i]);
+				modbus_tcp_set_socket(smb_slave, client_socket[i]); // set server_socket
+				modbus_tcp_disconnect(smb_slave);										// disconnect server_socket
 				client_socket[i] = -1;
 			}
 		}
-		MODBUS_PRINTF("modbus_disconnect server :%d\n",server_socket);
-		modbus_tcp_set_socket(smb_slave,server_socket); //set server_socket
-		modbus_tcp_disconnect(smb_slave); //disconnect server_socket
+		MODBUS_PRINTF("modbus_disconnect server :%d\n", server_socket);
+		modbus_tcp_set_socket(smb_slave, server_socket); // set server_socket
+		modbus_tcp_disconnect(smb_slave);								 // disconnect server_socket
 		server_socket = -1;
 	}
 }
@@ -287,18 +292,17 @@ static void test_modbus_tcp_slave_thread(void *param)
 int test_modbus_tcp_slave(void)
 {
 	rt_thread_t tid;
-	
-	tid = rt_thread_create("slave",test_modbus_tcp_slave_thread, &modbus_tcp_slave,2048,20, 10);
+
+	tid = rt_thread_create("slave", test_modbus_tcp_slave_thread, &modbus_tcp_slave, 2048, 20, 10);
 	if (tid != RT_NULL)
-			rt_thread_startup(tid);
+		rt_thread_startup(tid);
 	return 0;
 }
 
-//mshÃüÁîĞĞÆô¶¯
+// mshå‘½ä»¤è¡Œå¯åŠ¨
 #if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
 #include <finsh.h>
 
 MSH_CMD_EXPORT(test_modbus_tcp_slave, test modbus_tcp_slave);
 
 #endif
-

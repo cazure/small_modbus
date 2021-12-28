@@ -5,54 +5,53 @@
 #include "board_virtualIO.h"
 
 static small_modbus_t modbus_rtu_master = {0};
-//#define MODBUS_PRINTF(...) 
-#define MODBUS_PRINTF(...)   modbus_debug_info((&modbus_rtu_master),__VA_ARGS__)
+//#define MODBUS_PRINTF(...)
+#define MODBUS_PRINTF(...) modbus_debug_info((&modbus_rtu_master), __VA_ARGS__)
 
-//rtthread device name
+// rtthread device name
 #define UART_DEVICE_NAME "uart2"
 
-//rtthread pin index
-static  int rs485_rts_pin = 0;
+// rtthread pin index
+static int rs485_rts_pin = 0;
 
-//ÊÕ·¢¿ØÖÆÒı½Å»Øµ÷º¯Êı
+//æ”¶å‘æ§åˆ¶å¼•è„šå›è°ƒå‡½æ•°
 static int uart_rts(int on)
 {
-	if(on)
+	if (on)
 	{
-	    rt_pin_write(rs485_rts_pin, PIN_HIGH);
-	    rt_thread_mdelay(2);  //9600 bps 3.5 ¸ö×Ö·ûÑÓ³ÙÊ±¼ä
-	}else
+		rt_pin_write(rs485_rts_pin, PIN_HIGH);
+		rt_thread_mdelay(2); // 9600 bps 3.5 ä¸ªå­—ç¬¦å»¶è¿Ÿæ—¶é—´
+	}
+	else
 	{
-		rt_thread_mdelay(2);  //9600 bps 3.5 ¸ö×Ö·ûÑÓ³ÙÊ±¼ä
-	    rt_pin_write(rs485_rts_pin, PIN_LOW);
+		rt_thread_mdelay(2); // 9600 bps 3.5 ä¸ªå­—ç¬¦å»¶è¿Ÿæ—¶é—´
+		rt_pin_write(rs485_rts_pin, PIN_LOW);
 	}
 	return 0;
 }
-
 
 static int count_ok = 0;
 static int count_err = 0;
 
 #define MASTER_SEM_POLL
 
-
 #ifdef MASTER_SEM_POLL
 
-//send modbus µÄĞÅºÅÁ¿
+// send modbus çš„ä¿¡å·é‡
 struct rt_semaphore send_modbus_sem;
 
-//ÊµÏÖvioÁ¢¼´Í¨Öªmaster·¢ËÍmodbusĞ´Ö¸Áî
+//å®ç°vioç«‹å³é€šçŸ¥masterå‘é€modbuså†™æŒ‡ä»¤
 RT_WEAK void vio_lowlevel_update(void)
 {
 	rt_sem_release(&(send_modbus_sem));
 }
 
-//mshÃüÁîĞĞµ÷ÓÃº¯Êı
+// mshå‘½ä»¤è¡Œè°ƒç”¨å‡½æ•°
 void test_modbus_rtu_master_sem(void)
 {
 	vio_lowlevel_update();
 }
-//mshÃüÁîĞĞÆô¶¯
+// mshå‘½ä»¤è¡Œå¯åŠ¨
 #if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
 #include <finsh.h>
 
@@ -67,46 +66,46 @@ static uint8_t temp_buff[256];
 void master_sem_poll(small_modbus_t *smb_master)
 {
 	int index = 0;
-	int rc = rt_sem_take(&(send_modbus_sem),3000); //µÈ´ıvio_lowlevel_updateÊÍ·ÅĞÅºÅÁ¿,Èç¹ûÃ»ÓĞ»áÒ»Ö±µÈ´ı3000ms
-	if(rc == RT_EOK)  //ÊÍ·Å³É¹¦
+	int rc = rt_sem_take(&(send_modbus_sem), 3000); //ç­‰å¾…vio_lowlevel_updateé‡Šæ”¾ä¿¡å·é‡,å¦‚æœæ²¡æœ‰ä¼šä¸€ç›´ç­‰å¾…3000ms
+	if (rc == RT_EOK)																//é‡Šæ”¾æˆåŠŸ
 	{
-		vio_read_hold_coils(0,16,temp_buff);  //´Óvio¶ÁÈ¡±£³Ö¼Ä´æÆ÷Öµ
-		
+		vio_read_hold_coils(0, 16, temp_buff); //ä»vioè¯»å–ä¿æŒå¯„å­˜å™¨å€¼
+
 		modbus_error_recovery(smb_master);
 		modbus_set_slave(smb_master, 1);
-		rc = modbus_write_bits(smb_master, 00000 , 16, temp_buff); // modbus_write_bits
-		MODBUS_PRINTF("modbus_write_bits:%d\n",rc);
-		if(rc >= MODBUS_OK)
+		rc = modbus_write_bits(smb_master, 00000, 16, temp_buff); // modbus_write_bits
+		MODBUS_PRINTF("modbus_write_bits:%d\n", rc);
+		if (rc >= MODBUS_OK)
 		{
 			count_ok++;
-		}else
+		}
+		else
 		{
 			count_err++;
 		}
-		
+
 		rt_thread_mdelay(10);
 		modbus_error_recovery(smb_master);
 		modbus_set_slave(smb_master, 1);
 		rc = modbus_read_input_bits(smb_master, 10000, 8, temp_buff); // modbus_read_input_bits
-		MODBUS_PRINTF("modbus_read_input_bits:%d\n",rc);
-		if(rc >= MODBUS_OK)
+		MODBUS_PRINTF("modbus_read_input_bits:%d\n", rc);
+		if (rc >= MODBUS_OK)
 		{
-			vio_lowlevel_update_input_coils(0,8,temp_buff); //¸üĞÂÊäÈë¼Ä´æÆ÷µÄÖµµ½vio
-			
-			for(index = 0; index <8;index++)
+			vio_lowlevel_update_input_coils(0, 8, temp_buff); //æ›´æ–°è¾“å…¥å¯„å­˜å™¨çš„å€¼åˆ°vio
+
+			for (index = 0; index < 8; index++)
 			{
-				rt_kprintf("[%d]",dio_get_val(temp_buff,index));
+				rt_kprintf("[%d]", dio_get_val(temp_buff, index));
 			}
 			rt_kputs("\n\r");
 			count_ok++;
-		}else
+		}
+		else
 		{
 			count_err++;
 		}
-		
 	}
 }
-
 
 void master_poll(small_modbus_t *smb_master)
 {
@@ -116,16 +115,17 @@ void master_poll(small_modbus_t *smb_master)
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
 	rc = modbus_read_input_bits(smb_master, 10000, 8, temp_buff); // modbus_read_input_bits
-	MODBUS_PRINTF("modbus_read_input_bits:%d\n",rc);
-	if(rc >= MODBUS_OK)
+	MODBUS_PRINTF("modbus_read_input_bits:%d\n", rc);
+	if (rc >= MODBUS_OK)
 	{
-		for(index = 0; index <8;index++)
+		for (index = 0; index < 8; index++)
 		{
-			rt_kprintf("[%d]",dio_get_val(temp_buff,index));
+			rt_kprintf("[%d]", dio_get_val(temp_buff, index));
 		}
 		rt_kputs("\n\r");
 		count_ok++;
-	}else
+	}
+	else
 	{
 		count_err++;
 	}
@@ -133,12 +133,13 @@ void master_poll(small_modbus_t *smb_master)
 	rt_thread_mdelay(30);
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
-	rc = modbus_write_bits(smb_master, 00000 , 8, temp_buff); // modbus_write_bits
-	MODBUS_PRINTF("modbus_write_bits:%d\n",rc);
-	if(rc >= MODBUS_OK)
+	rc = modbus_write_bits(smb_master, 00000, 8, temp_buff); // modbus_write_bits
+	MODBUS_PRINTF("modbus_write_bits:%d\n", rc);
+	if (rc >= MODBUS_OK)
 	{
 		count_ok++;
-	}else
+	}
+	else
 	{
 		count_err++;
 	}
@@ -146,36 +147,37 @@ void master_poll(small_modbus_t *smb_master)
 	rt_thread_mdelay(30);
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
-	rc = modbus_read_bits(smb_master, 00000 , 8, temp_buff); // modbus_read_bits
-	MODBUS_PRINTF("modbus_read_bits:%d\n",rc);
-	if(rc >= MODBUS_OK)
+	rc = modbus_read_bits(smb_master, 00000, 8, temp_buff); // modbus_read_bits
+	MODBUS_PRINTF("modbus_read_bits:%d\n", rc);
+	if (rc >= MODBUS_OK)
 	{
-		for(index = 0; index <8;index++)
+		for (index = 0; index < 8; index++)
 		{
-			rt_kprintf("[%d]",dio_get_val(temp_buff,index));
+			rt_kprintf("[%d]", dio_get_val(temp_buff, index));
 		}
 		rt_kputs("\n\r");
 		count_ok++;
-	}else
+	}
+	else
 	{
 		count_err++;
 	}
 
-
 	rt_thread_mdelay(30);
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
-	rc = modbus_read_input_registers(smb_master, 30000 , 8, (uint16_t*)temp_buff);  // modbus_read_input_registers
-	MODBUS_PRINTF("modbus_read_input_registers:%d\n",rc);
-	if(rc >= MODBUS_OK)
+	rc = modbus_read_input_registers(smb_master, 30000, 8, (uint16_t *)temp_buff); // modbus_read_input_registers
+	MODBUS_PRINTF("modbus_read_input_registers:%d\n", rc);
+	if (rc >= MODBUS_OK)
 	{
-		for(index = 0; index <8;index++)
+		for (index = 0; index < 8; index++)
 		{
-			rt_kprintf("[%d]",aio_get_val((uint16_t*)temp_buff,index));
+			rt_kprintf("[%d]", aio_get_val((uint16_t *)temp_buff, index));
 		}
 		rt_kputs("\n\r");
 		count_ok++;
-	}else
+	}
+	else
 	{
 		count_err++;
 	}
@@ -183,12 +185,13 @@ void master_poll(small_modbus_t *smb_master)
 	rt_thread_mdelay(30);
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
-	rc = modbus_write_registers(smb_master, 40000 , 8, (uint16_t*)temp_buff); // modbus_write_registers
-	MODBUS_PRINTF("modbus_write_registers:%d\n",rc);
-	if(rc >= MODBUS_OK)
+	rc = modbus_write_registers(smb_master, 40000, 8, (uint16_t *)temp_buff); // modbus_write_registers
+	MODBUS_PRINTF("modbus_write_registers:%d\n", rc);
+	if (rc >= MODBUS_OK)
 	{
 		count_ok++;
-	}else
+	}
+	else
 	{
 		count_err++;
 	}
@@ -196,17 +199,18 @@ void master_poll(small_modbus_t *smb_master)
 	rt_thread_mdelay(30);
 	modbus_error_recovery(smb_master);
 	modbus_set_slave(smb_master, 1);
-	rc = modbus_read_registers(smb_master, 40000 , 8, (uint16_t*)temp_buff); // modbus_read_registers
-	MODBUS_PRINTF("modbus_read_registers:%d\n",rc);
-	if(rc >= MODBUS_OK)
+	rc = modbus_read_registers(smb_master, 40000, 8, (uint16_t *)temp_buff); // modbus_read_registers
+	MODBUS_PRINTF("modbus_read_registers:%d\n", rc);
+	if (rc >= MODBUS_OK)
 	{
-		for(index = 0; index <8;index++)
+		for (index = 0; index < 8; index++)
 		{
-			rt_kprintf("[%d]",aio_get_val((uint16_t*)temp_buff,index));
+			rt_kprintf("[%d]", aio_get_val((uint16_t *)temp_buff, index));
 		}
 		rt_kputs("\n\r");
 		count_ok++;
-	}else
+	}
+	else
 	{
 		count_err++;
 	}
@@ -214,60 +218,59 @@ void master_poll(small_modbus_t *smb_master)
 
 static void test_modbus_rtu_master_thread(void *param)
 {
-	int rc = 0;	
+	int rc = 0;
 	small_modbus_t *smb_master = param;
-	
-	rs485_rts_pin = rt_pin_get("PB.1");  //¸ù¾İmcuÆ½Ì¨ĞŞ¸ÄÒı½ÅºÅ
+
+	rs485_rts_pin = rt_pin_get("PB.1"); //æ ¹æ®mcuå¹³å°ä¿®æ”¹å¼•è„šå·
 	rt_pin_mode(rs485_rts_pin, PIN_MODE_OUTPUT);
 	rt_pin_write(rs485_rts_pin, PIN_LOW);
-	
-	modbus_init(smb_master,MODBUS_CORE_RTU,modbus_port_rtdevice_create(UART_DEVICE_NAME)); // init modbus  RTU mode
-	
+
+	modbus_init(smb_master, MODBUS_CORE_RTU, modbus_port_rtdevice_create(UART_DEVICE_NAME)); // init modbus  RTU mode
+
 	struct serial_configure serial_config;
 	serial_config.baud_rate = BAUD_RATE_9600;
 	serial_config.data_bits = DATA_BITS_8;
 	serial_config.stop_bits = STOP_BITS_1;
 	serial_config.bufsz = RT_SERIAL_RB_BUFSZ;
 	serial_config.parity = PARITY_NONE;
-	modbus_rtu_set_serial_config(smb_master,&serial_config);  //config serial 
-	
-	modbus_rtu_set_serial_rts(smb_master,uart_rts);
-	
-	modbus_rtu_set_oflag(smb_master,RT_DEVICE_FLAG_INT_RX);
-	//modbus_rtu_set_oflag(smb_master,RT_DEVICE_FLAG_DMA_RX);
-	
+	modbus_rtu_set_serial_config(smb_master, &serial_config); // config serial
+
+	modbus_rtu_set_serial_rts(smb_master, uart_rts);
+
+	modbus_rtu_set_oflag(smb_master, RT_DEVICE_FLAG_INT_RX);
+	// modbus_rtu_set_oflag(smb_master,RT_DEVICE_FLAG_DMA_RX);
+
 	modbus_connect(smb_master);
 	MODBUS_PRINTF("modbus master\n");
-	
+
 	rt_sem_init(&(send_modbus_sem), "sendsem", 0, RT_IPC_FLAG_FIFO);
-	
-	while(1)
+
+	while (1)
 	{
 #ifdef MASTER_SEM_POLL
-		master_sem_poll(smb_master);  //Ö÷»úĞÅºÅÁ¿´¥·¢¶ÁĞ´
+		master_sem_poll(smb_master); //ä¸»æœºä¿¡å·é‡è§¦å‘è¯»å†™
 #else
-		master_poll(smb_master);  //Ö÷»úÂÖÑ¯´Ó»úÊ¾Àı´úÂë£¬¸Ã²Ù×÷±È½Ï·ÑÊ±
+		master_poll(smb_master); //ä¸»æœºè½®è¯¢ä»æœºç¤ºä¾‹ä»£ç ï¼Œè¯¥æ“ä½œæ¯”è¾ƒè´¹æ—¶
 #endif
 	}
-	//modbus_disconnect(smb_master);
-	//Èç¹ûwhileÖĞÃ»ÓĞbreakÓ¦¸Ã²»»áÔËĞĞµ½ÕâÀï
+	// modbus_disconnect(smb_master);
+	//å¦‚æœwhileä¸­æ²¡æœ‰breakåº”è¯¥ä¸ä¼šè¿è¡Œåˆ°è¿™é‡Œ
 }
 
 int test_modbus_rtu_master(void)
 {
 	rt_thread_t tid;
-	
-	tid = rt_thread_create("master",test_modbus_rtu_master_thread, &modbus_rtu_master,2048,20, 10);
+
+	tid = rt_thread_create("master", test_modbus_rtu_master_thread, &modbus_rtu_master, 2048, 20, 10);
 	if (tid != RT_NULL)
-			rt_thread_startup(tid);
+		rt_thread_startup(tid);
 	return 0;
 }
 
-//mshÃüÁîĞĞÆô¶¯
+// mshå‘½ä»¤è¡Œå¯åŠ¨
 #if defined(RT_USING_FINSH) && defined(FINSH_USING_MSH)
 #include <finsh.h>
 
 MSH_CMD_EXPORT(test_modbus_rtu_master, test_modbus_rtu_master);
 
 #endif
-
