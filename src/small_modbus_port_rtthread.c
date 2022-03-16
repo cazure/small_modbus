@@ -295,20 +295,18 @@ int modbus_rtu_set_oflag(small_modbus_t *smb, int oflag)
 #include <string.h>
 #include <ctype.h>
 
-#if defined(RT_USING_LIBC) || defined(RT_USING_MINILIBC) || defined(RT_LIBC_USING_TIME)
+//#if defined(RT_USING_SAL)
+//#include <sal.h>
+//#include <sal_netdb.h>
+//#include <sal_socket.h>
+//#endif
+#if defined(SAL_USING_POSIX)
+#include <netdb.h>
+#include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/errno.h>
 #include <sys/ioctl.h>
 #endif
-
-/* support both enable and disable "SAL_USING_POSIX" */
-#if defined(RT_USING_SAL)
-#include <netdb.h>
-#include <sys/socket.h>
-#else
-#include <lwip/netdb.h>
-#include <lwip/sockets.h>
-#endif /* RT_USING_SAL */
 
 static int _modbus_rtsocket_open(small_modbus_t *smb)
 {
@@ -367,7 +365,7 @@ static int _modbus_rtsocket_wait(small_modbus_t *smb, int timeout)
 			timeout / 1000,
 			(timeout % 1000) * 1000};
 
-	if (tv.tv_sec < 0 || (tv.tv_sec == 0 && tv.tv_usec <= 0))
+	if ((tv.tv_sec == 0 && tv.tv_usec <= 0))
 	{
 		tv.tv_sec = 0;
 		tv.tv_usec = 1000 * 10;
