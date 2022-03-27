@@ -137,16 +137,19 @@ static void test_modbus_tcp_slave_thread(void *param)
 	}
 }
 
-#elseif
+#else
 
 #ifdef RT_USING_POSIX
 
-#include <dfs_posix.h>
-#include <dfs_poll.h>
-#include <dfs_select.h>
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <netdb.h>
+#include <sys/socket.h>
 #include <sys/time.h>
-#include <sal_socket.h>
+#include <sys/errno.h>
+#include <sys/ioctl.h>
 
 //最大连接数量
 #define MAX_CLIENT_NUM 3

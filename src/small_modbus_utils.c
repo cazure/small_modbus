@@ -55,12 +55,18 @@ void dio_set_val(uint8_t *array, uint16_t index, int status)
 
 int aio_get_val(uint16_t *array, uint16_t index)
 {
-	return array[index];
+    uint8_t *buf = (uint8_t*)array;
+    uint16_t status = (buf[(index * 2)]) + (buf[(index * 2) + 1] << 8);
+
+	return status; //array[index];
 }
 
 void aio_set_val(uint16_t *array, uint16_t index, int status)
 {
-	array[index] = status;
+    uint8_t *buf = (uint8_t*)array;
+    buf[(index * 2)] = (status & 0x00FF);
+    buf[(index * 2) + 1] = (status >> 8);
+	//array[index] = status;
 }
 
 int modbus_check_addr_num(uint8_t function, uint16_t address, uint16_t num)
@@ -142,38 +148,47 @@ void modbus_coil_m2h(uint8_t *des, uint8_t *src, int coil_num)
 	} while (--num);
 }
 
-#define MODBUS_REG_SWAP(x) ((((x)&0x00ffUL) << 8) | (((x)&0xff00UL) >> 8))
 /*
+ *
+Modbus register data is in big end mode
 host uint16_t >> modbus_reg
 */
 void modbus_reg_h2m(void *dest_modbus_reg, void *source_host, int reg_num)
 {
-	uint16_t *source_host_u16 = source_host;
-	uint16_t *dest_modbus_u16 = dest_modbus_reg;
-	uint16_t temp = 0;
+    uint8_t *source_host_ptr = source_host;
+    uint8_t *dest_modbus_ptr = dest_modbus_reg;
+    uint8_t temp_modbus_low = 0;
+    uint8_t temp_modbus_high = 0;
+    do
+    {
+        temp_modbus_high = source_host_ptr[1]; //modbus high byte
+        temp_modbus_low = source_host_ptr[0]; //modbus low byte
 
-	do
-	{
-		temp = *source_host_u16;
-		*dest_modbus_u16 = MODBUS_REG_SWAP(temp);
-		source_host_u16++;
-		dest_modbus_u16++;
-	} while (--reg_num);
+        dest_modbus_ptr[0] = temp_modbus_high;
+        dest_modbus_ptr[1] = temp_modbus_low;
+
+        source_host_ptr+=2;
+        dest_modbus_ptr+=2;
+    } while (--reg_num);
 }
 /*
 modbus_reg >> host uint16_t
 */
 void modbus_reg_m2h(void *dest_host, void *source_modbus_reg, int reg_num)
 {
-	uint16_t *source_modbus_u16 = source_modbus_reg;
-	uint16_t *dest_host_u16 = dest_host;
-	uint16_t temp = 0;
+    uint8_t *source_modbus_ptr = source_modbus_reg;
+    uint8_t *dest_host_ptr = dest_host;
+    uint8_t temp_modbus_low = 0;
+    uint8_t temp_modbus_high = 0;
+    do
+    {
+        temp_modbus_high = source_modbus_ptr[0]; //modbus high byte
+        temp_modbus_low = source_modbus_ptr[1]; //modbus low byte
 
-	do
-	{
-		temp = *source_modbus_u16;
-		*dest_host_u16 = MODBUS_REG_SWAP(temp);
-		source_modbus_u16++;
-		dest_host_u16++;
-	} while (--reg_num);
+        dest_host_ptr[0] = temp_modbus_low;
+        dest_host_ptr[1] = temp_modbus_high;
+
+        source_modbus_ptr+=2;
+        dest_host_ptr+=2;
+    } while (--reg_num);
 }
