@@ -15,18 +15,18 @@
 /* function codes */
 enum functionCode
 {
-	MODBUS_FC_READ_HOLDING_COILS = 0x01,
-	MODBUS_FC_READ_INPUTS_COILS = 0x02,
-	MODBUS_FC_READ_HOLDING_REGISTERS = 0x03,
-	MODBUS_FC_READ_INPUT_REGISTERS = 0x04,
-	MODBUS_FC_WRITE_SINGLE_COIL = 0x05,
-	MODBUS_FC_WRITE_SINGLE_REGISTER = 0x06,
-	MODBUS_FC_READ_EXCEPTION_STATUS = 0x07,
-	MODBUS_FC_WRITE_MULTIPLE_COILS = 0x0F,
-	MODBUS_FC_WRITE_MULTIPLE_REGISTERS = 0x10,
-	MODBUS_FC_REPORT_SLAVE_ID = 0x11,
-	MODBUS_FC_MASK_WRITE_REGISTER = 0x16,
-	MODBUS_FC_WRITE_AND_READ_REGISTERS = 0x17,
+    MODBUS_FC_READ_HOLDING_COILS = 0x01,
+    MODBUS_FC_READ_INPUTS_COILS = 0x02,
+    MODBUS_FC_READ_HOLDING_REGISTERS = 0x03,
+    MODBUS_FC_READ_INPUT_REGISTERS = 0x04,
+    MODBUS_FC_WRITE_SINGLE_COIL = 0x05,
+    MODBUS_FC_WRITE_SINGLE_REGISTER = 0x06,
+    MODBUS_FC_READ_EXCEPTION_STATUS = 0x07,
+    MODBUS_FC_WRITE_MULTIPLE_COILS = 0x0F,
+    MODBUS_FC_WRITE_MULTIPLE_REGISTERS = 0x10,
+    MODBUS_FC_REPORT_SLAVE_ID = 0x11,
+    MODBUS_FC_MASK_WRITE_REGISTER = 0x16,
+    MODBUS_FC_WRITE_AND_READ_REGISTERS = 0x17,
 };
 
 ///* Protocol exceptions */
@@ -44,55 +44,55 @@ enum functionCode
 
 enum returnCode
 {
-	MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE = -0x83,
-	MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS = -0x82,
-	MODBUS_EXCEPTION_ILLEGAL_FUNCTION = -0x81,
-	MODBUS_EXCEPTION = -0x80,
-	MODBUS_ERROR_CONTEXT = -0x0A,
-	MODBUS_ERROR_WAIT = -9,
-	MODBUS_ERROR_READ = -8,
-	MODBUS_FAIL_CHECK = -7,
-	MODBUS_FAIL_ADRR = -6,
-	MODBUS_FAIL_HANDLE = -5,
-	MODBUS_FAIL_CONFIRM = -4,
-	MODBUS_FAIL_REQUEST = -3,
-	MODBUS_TIMEOUT = -2,
-	MODBUS_FAIL = -1,
-	MODBUS_OK = 0
+    MODBUS_EXCEPTION_ILLEGAL_DATA_VALUE = -0x83,
+    MODBUS_EXCEPTION_ILLEGAL_DATA_ADDRESS = -0x82,
+    MODBUS_EXCEPTION_ILLEGAL_FUNCTION = -0x81,
+    MODBUS_EXCEPTION = -0x80,
+    MODBUS_ERROR_CONTEXT = -0x0A,
+    MODBUS_ERROR_WAIT = -9,
+    MODBUS_ERROR_READ = -8,
+    MODBUS_FAIL_CHECK = -7,
+    MODBUS_FAIL_ADRR = -6,
+    MODBUS_FAIL_HANDLE = -5,
+    MODBUS_FAIL_CONFIRM = -4,
+    MODBUS_FAIL_REQUEST = -3,
+    MODBUS_TIMEOUT = -2,
+    MODBUS_FAIL = -1,
+    MODBUS_OK = 0
 };
 
 enum waitCode
 {
-	MODBUS_WAIT_FOREVER = -1,
-	MODBUS_WAIT_NO = 0
+    MODBUS_WAIT_FOREVER = -1,
+    MODBUS_WAIT_NO = 0
 };
 
 enum coreType
 {
-	MODBUS_CORE_NONE = 0,
-	MODBUS_CORE_RTU = 1,
-	MODBUS_CORE_TCP = 2
+    MODBUS_CORE_NONE = 0,
+    MODBUS_CORE_RTU = 1,
+    MODBUS_CORE_TCP = 2
 };
 
 enum portType
 {
-	MODBUS_PORT_NONE = 0,
-	MODBUS_PORT_DEVICE = 1,
-	MODBUS_PORT_SOCKET = 2
+    MODBUS_PORT_NONE = 0,
+    MODBUS_PORT_DEVICE = 1,
+    MODBUS_PORT_SOCKET = 2
 };
 
 enum deviceType
 {
-	MODBUS_DEVICE_NONE = 0,
-	MODBUS_DEVICE_SLAVE = 1,
-	MODBUS_DEVICE_MASTER = 2
+    MODBUS_DEVICE_NONE = 0,
+    MODBUS_DEVICE_SLAVE = 1,
+    MODBUS_DEVICE_MASTER = 2
 };
 
 enum modbusMagic
 {
-	MODBUS_MAGIC = 0x4243424D,			//"MBCB"
-	MODBUS_CORE_MAGIC = 0x4343424D, //"MBCC"
-	MODBUS_PORT_MAGIC = 0x5050424D, //"MBPP"
+    MODBUS_MAGIC = 0x4243424D,          //"MBCB"
+    MODBUS_CORE_MAGIC = 0x4343424D, //"MBCC"
+    MODBUS_PORT_MAGIC = 0x5050424D, //"MBPP"
 };
 
 #define MODBUS_BROADCAST_ADDRESS 0
@@ -159,48 +159,48 @@ typedef struct _small_modbus_port small_modbus_port_t; // modbus port (rtthread 
 
 struct _small_modbus_core
 {
-	const uint32_t magic;
-	const uint16_t type;
-	const uint16_t len_header;
-	const uint16_t len_checksum;
-	const uint16_t len_adu_max;
-	int (*build_request_header)(small_modbus_t *smb, uint8_t *buff, int slave, int fun, int reg, int num);
-	int (*build_response_header)(small_modbus_t *smb, uint8_t *buff, int slave, int fun);
-	int (*check_send_pre)(small_modbus_t *smb, uint8_t *buff, int length);
-	int (*check_wait_request)(small_modbus_t *smb, uint8_t *buff, int length);
-	int (*check_wait_response)(small_modbus_t *smb, uint8_t *buff, int length);
+    const uint32_t magic;
+    const uint16_t type;
+    const uint16_t len_header;
+    const uint16_t len_checksum;
+    const uint16_t len_adu_max;
+    int (*build_request_header)(small_modbus_t *smb, uint8_t *buff, int slave, int fun, int reg, int num);
+    int (*build_response_header)(small_modbus_t *smb, uint8_t *buff, int slave, int fun);
+    int (*check_send_pre)(small_modbus_t *smb, uint8_t *buff, int length);
+    int (*check_wait_request)(small_modbus_t *smb, uint8_t *buff, int length);
+    int (*check_wait_response)(small_modbus_t *smb, uint8_t *buff, int length);
 };
 
 struct _small_modbus_port
 {
-	const uint32_t magic;
-	const uint32_t type;
-	int (*open)(small_modbus_t *smb);
-	int (*close)(small_modbus_t *smb);
-	int (*read)(small_modbus_t *smb, uint8_t *data, uint16_t length);
-	int (*write)(small_modbus_t *smb, uint8_t *data, uint16_t length);
-	int (*flush)(small_modbus_t *smb);
-	int (*wait)(small_modbus_t *smb, int timeout);
+    const uint32_t magic;
+    const uint32_t type;
+    int (*open)(small_modbus_t *smb);
+    int (*close)(small_modbus_t *smb);
+    int (*read)(small_modbus_t *smb, uint8_t *data, uint16_t length);
+    int (*write)(small_modbus_t *smb, uint8_t *data, uint16_t length);
+    int (*flush)(small_modbus_t *smb);
+    int (*wait)(small_modbus_t *smb, int timeout);
 };
 
 struct _small_modbus
 {
-	uint32_t modbus_magic;
-	uint16_t device_mode;
-	uint8_t slave_addr;
-	uint8_t debug_level;
+    uint32_t modbus_magic;
+    uint16_t device_mode;
+    uint8_t slave_addr;
+    uint8_t debug_level;
 
-	uint16_t transfer_id;
-	uint16_t protocol_id;
+    uint16_t transfer_id;
+    uint16_t protocol_id;
 
-	int status;
-	int error_code;
-	uint32_t timeout_frame;										 //帧超时时间ms
-	uint32_t timeout_byte;										 //字节超时时间ms
-	uint8_t read_buff[MODBUS_MAX_ADU_LENGTH];	 // modbus读缓冲区
-	uint8_t write_buff[MODBUS_MAX_ADU_LENGTH]; // modbus写缓冲区
-	small_modbus_core_t *core;								 // modbus core (modbus-rtu,modbus-tcp)
-	small_modbus_port_t *port;								 // modbus port (rtthread  ,linux ,win32) serial socket
+    int status;
+    int error_code;
+    uint32_t timeout_frame;                                      //帧超时时间ms
+    uint32_t timeout_byte;                                       //字节超时时间ms
+    uint8_t read_buff[MODBUS_MAX_ADU_LENGTH];    // modbus读缓冲区
+    uint8_t write_buff[MODBUS_MAX_ADU_LENGTH]; // modbus写缓冲区
+    small_modbus_core_t *core;                               // modbus core (modbus-rtu,modbus-tcp)
+    small_modbus_port_t *port;                               // modbus port (rtthread  ,linux ,win32) serial socket
 };
 
 int _modbus_init(small_modbus_t *smb);

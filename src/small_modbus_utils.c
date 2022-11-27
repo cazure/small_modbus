@@ -10,47 +10,47 @@
 
 uint16_t modbus_crc16(uint8_t *buffer, uint16_t buffer_length)
 {
-	uint16_t CRC = 0XFFFF;
-	uint16_t CRC_count = 0;
-	uint16_t i = 0;
-	for (CRC_count = 0; CRC_count < buffer_length; CRC_count++)
-	{
-		CRC = CRC ^ *(buffer + CRC_count);
-		for (i = 0; i < 8; i++)
-		{
-			if (CRC & 1)
-			{
-				CRC >>= 1;
-				CRC ^= 0xA001;
-			}
-			else
-			{
-				CRC >>= 1;
-			}
-		}
-	}
-	return CRC;
+    uint16_t CRC = 0XFFFF;
+    uint16_t CRC_count = 0;
+    uint16_t i = 0;
+    for (CRC_count = 0; CRC_count < buffer_length; CRC_count++)
+    {
+        CRC = CRC ^ *(buffer + CRC_count);
+        for (i = 0; i < 8; i++)
+        {
+            if (CRC & 1)
+            {
+                CRC >>= 1;
+                CRC ^= 0xA001;
+            }
+            else
+            {
+                CRC >>= 1;
+            }
+        }
+    }
+    return CRC;
 }
 
 int dio_get_val(uint8_t *array, uint16_t index)
 {
-	uint8_t offset_bit = (index & 0x07);	//(index%8);  //
-	uint8_t offset_arr = (index >> 0x03); //(index/8);  //
-	return (array[offset_arr] & (0x01 << offset_bit)) ? 1 : 0;
+    uint8_t offset_bit = (index & 0x07);    //(index%8);  //
+    uint8_t offset_arr = (index >> 0x03); //(index/8);  //
+    return (array[offset_arr] & (0x01 << offset_bit)) ? 1 : 0;
 }
 
 void dio_set_val(uint8_t *array, uint16_t index, int status)
 {
-	uint8_t offset_bit = (index & 0x07);	//(index%8);  //
-	uint8_t offset_arr = (index >> 0x03); //(index/8);  //
-	if (status)
-	{
-		array[offset_arr] |= (0x01 << offset_bit);
-	}
-	else
-	{
-		array[offset_arr] &= ~(0x01 << offset_bit);
-	}
+    uint8_t offset_bit = (index & 0x07);    //(index%8);  //
+    uint8_t offset_arr = (index >> 0x03); //(index/8);  //
+    if (status)
+    {
+        array[offset_arr] |= (0x01 << offset_bit);
+    }
+    else
+    {
+        array[offset_arr] &= ~(0x01 << offset_bit);
+    }
 }
 
 int aio_get_val(uint16_t *array, uint16_t index)
@@ -58,7 +58,7 @@ int aio_get_val(uint16_t *array, uint16_t index)
     uint8_t *buf = (uint8_t*)array;
     uint16_t status = (buf[(index * 2)]) + (buf[(index * 2) + 1] << 8);
 
-	return status; //array[index];
+    return status; //array[index];
 }
 
 void aio_set_val(uint16_t *array, uint16_t index, int status)
@@ -66,86 +66,86 @@ void aio_set_val(uint16_t *array, uint16_t index, int status)
     uint8_t *buf = (uint8_t*)array;
     buf[(index * 2)] = (status & 0x00FF);
     buf[(index * 2) + 1] = (status >> 8);
-	//array[index] = status;
+    //array[index] = status;
 }
 
 int modbus_check_addr_num(uint8_t function, uint16_t address, uint16_t num)
 {
-	switch (function)
-	{
-	case MODBUS_FC_READ_HOLDING_COILS:
-	case MODBUS_FC_READ_INPUTS_COILS:
-	{
-		if ((0 < num) && (num <= MODBUS_MAX_READ_BITS)) //¶ÁÈ¡µ½µÄÏßÈ¦ÊýÁ¿´óÓÚ0ÇÒÐ¡ÓÚ2000¸ö
-		{
-			return 1;
-		}
-	}
-	break;
-	case MODBUS_FC_READ_HOLDING_REGISTERS:
-	case MODBUS_FC_READ_INPUT_REGISTERS:
-	{
-		if ((0 < num) && (num <= MODBUS_MAX_READ_REGISTERS)) //¶ÁÈ¡µ½µÄ¼Ä´æÆ÷ÊýÁ¿´óÓÚ0ÇÒÐ¡ÓÚ125¸ö
-		{
-			return 1;
-		}
-	}
-	break;
-	case MODBUS_FC_WRITE_MULTIPLE_COILS:
-	{
-		if ((0 < num) && (num <= MODBUS_MAX_WRITE_BITS)) //¶ÁÈ¡µ½µÄ¼Ä´æÆ÷ÊýÁ¿´óÓÚ0ÇÒÐ¡ÓÚ1968¸ö
-		{
-			return 1;
-		}
-	}
-	break;
-	case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
-	{
-		if ((0 < num) && (num <= MODBUS_MAX_WRITE_REGISTERS)) //¶ÁÈ¡µ½µÄ¼Ä´æÆ÷ÊýÁ¿´óÓÚ0ÇÒÐ¡ÓÚ123¸ö
-		{
-			return 1;
-		}
-	}
-	break;
-	case MODBUS_FC_WRITE_SINGLE_COIL:
-	case MODBUS_FC_WRITE_SINGLE_REGISTER:
-	{
-		return 1;
-	}
-	}
-	return 0;
+    switch (function)
+    {
+    case MODBUS_FC_READ_HOLDING_COILS:
+    case MODBUS_FC_READ_INPUTS_COILS:
+    {
+        if ((0 < num) && (num <= MODBUS_MAX_READ_BITS)) //è¯»å–åˆ°çš„çº¿åœˆæ•°é‡å¤§äºŽ0ä¸”å°äºŽ2000ä¸ª
+        {
+            return 1;
+        }
+    }
+    break;
+    case MODBUS_FC_READ_HOLDING_REGISTERS:
+    case MODBUS_FC_READ_INPUT_REGISTERS:
+    {
+        if ((0 < num) && (num <= MODBUS_MAX_READ_REGISTERS)) //è¯»å–åˆ°çš„å¯„å­˜å™¨æ•°é‡å¤§äºŽ0ä¸”å°äºŽ125ä¸ª
+        {
+            return 1;
+        }
+    }
+    break;
+    case MODBUS_FC_WRITE_MULTIPLE_COILS:
+    {
+        if ((0 < num) && (num <= MODBUS_MAX_WRITE_BITS)) //è¯»å–åˆ°çš„å¯„å­˜å™¨æ•°é‡å¤§äºŽ0ä¸”å°äºŽ1968ä¸ª
+        {
+            return 1;
+        }
+    }
+    break;
+    case MODBUS_FC_WRITE_MULTIPLE_REGISTERS:
+    {
+        if ((0 < num) && (num <= MODBUS_MAX_WRITE_REGISTERS)) //è¯»å–åˆ°çš„å¯„å­˜å™¨æ•°é‡å¤§äºŽ0ä¸”å°äºŽ123ä¸ª
+        {
+            return 1;
+        }
+    }
+    break;
+    case MODBUS_FC_WRITE_SINGLE_COIL:
+    case MODBUS_FC_WRITE_SINGLE_REGISTER:
+    {
+        return 1;
+    }
+    }
+    return 0;
 }
 
 void modbus_byte_copy(uint8_t *des, uint8_t *src, int num)
 {
-	while (num--)
-	{
-		*des = *src;
-		des++;
-		src++;
-	}
+    while (num--)
+    {
+        *des = *src;
+        des++;
+        src++;
+    }
 }
 
 void modbus_coil_h2m(uint8_t *des, uint8_t *src, int coil_num)
 {
-	int num = (coil_num / 8) + ((coil_num % 8) ? 1 : 0);
-	do
-	{
-		*des = *src;
-		des++;
-		src++;
-	} while (--num);
+    int num = (coil_num / 8) + ((coil_num % 8) ? 1 : 0);
+    do
+    {
+        *des = *src;
+        des++;
+        src++;
+    } while (--num);
 }
 
 void modbus_coil_m2h(uint8_t *des, uint8_t *src, int coil_num)
 {
-	int num = (coil_num / 8) + ((coil_num % 8) ? 1 : 0);
-	do
-	{
-		*des = *src;
-		des++;
-		src++;
-	} while (--num);
+    int num = (coil_num / 8) + ((coil_num % 8) ? 1 : 0);
+    do
+    {
+        *des = *src;
+        des++;
+        src++;
+    } while (--num);
 }
 
 /*

@@ -28,14 +28,14 @@ typedef struct small_modbus_port_rtdevice small_modbus_port_rtdevice_t;
 
 struct small_modbus_port_rtdevice
 {
-	struct _small_modbus_port base;
-	struct serial_configure serial_config;
-	const char *device_name;
-	struct rt_device *device;
-	struct rt_semaphore rx_sem;
-	rt_size_t rx_size;
-	int oflag;
-	int (*rts_set)(int on);
+    struct _small_modbus_port base;
+    struct serial_configure serial_config;
+    const char *device_name;
+    struct rt_device *device;
+    struct rt_semaphore rx_sem;
+    rt_size_t rx_size;
+    int oflag;
+    int (*rts_set)(int on);
 };
 
 small_modbus_port_rtdevice_t *modbus_port_rtdevice_get(small_modbus_t *smb);
@@ -84,15 +84,15 @@ typedef struct small_modbus_port_rtsocket small_modbus_port_rtsocket_t;
 
 struct small_modbus_port_rtsocket
 {
-	struct _small_modbus_port base;
-	int32_t socket_fd;
-	int devicemode;
-	const char *hostname;
-	const char *hostport;
+    struct _small_modbus_port base;
+    int32_t socket_fd;
+    int devicemode;
+    const char *hostname;
+    const char *hostport;
 
-	struct rt_ringbuffer rx_ringbuff;
-	uint8_t rx_temp[256];
-	uint8_t rx_ringbuff_pool[256];
+    struct rt_ringbuffer rx_ringbuff;
+    uint8_t rx_temp[256];
+    uint8_t rx_ringbuff_pool[256];
 };
 
 int modbus_tcp_status(small_modbus_t *smb);
