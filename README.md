@@ -38,7 +38,7 @@ modbus端口（rtthread device、rtthread sal socket、linux devfs 、linux sock
 *RTTHREAD PORT
 */
 #define SMALL_MODBUS_RTTHREAD 1
-#define SMALL_MODBUS_RTTHREAD_USE_DEVICDE  1
+#define SMALL_MODBUS_RTTHREAD_USE_DEVICE   1
 #define SMALL_MODBUS_RTTHREAD_USE_SOCKET   0
 
 #if SMALL_MODBUS_RTTHREAD

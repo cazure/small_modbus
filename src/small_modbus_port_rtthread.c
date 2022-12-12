@@ -82,7 +82,7 @@ small_modbus_t *modbus_create(uint8_t core_type, void *port)
 /*
  *modbus port device
  */
-#ifdef SMALL_MODBUS_RTTHREAD_USE_DEVICDE
+#ifdef SMALL_MODBUS_RTTHREAD_USE_DEVICE
 
 #include <rtthread.h>
 #include <rtdevice.h>

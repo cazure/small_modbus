@@ -11,8 +11,5 @@
 #include "small_modbus_utils.h"
 
 #include "config_small_modbus.h"
-#include "small_modbus_port_rtthread.h"
-#include "small_modbus_port_linux.h"
-#include "small_modbus_port_win32.h"
 
 #endif /* _SMALL_MODBUS_H_ */
